@@ -125,7 +125,7 @@
  function startLive(){if(liveOn)return;liveOn=true;
   try{sb.channel("inquiries-live").on("postgres_changes",{event:"*",schema:"public",table:"inquiries"},()=>loadRequests()).subscribe();}catch(e){console.error(e);}
   setInterval(()=>{if(!document.hidden)loadRequests();},30000);}
- function updateNotifyUI(){const S=window.SPPush;if(!S)return;$("#sound-toggle").textContent="Ton: "+(S.soundOn()?"an":"aus");const h=$("#app-hint");if(h){h.hidden=false;h.innerHTML='Für das Handy gibt es die <a href="app.html">Mitarbeiter-App</a> (Aufträge mit Benachrichtigung). Im Browser-Menü „Zum Startbildschirm hinzufügen“ bzw. „App installieren“ wählen.';}}
+ function updateNotifyUI(){const S=window.SPPush;if(!S)return;$("#sound-toggle").textContent="Ton: "+(S.soundOn()?"an":"aus");const h=$("#app-hint");if(h){h.hidden=false;h.innerHTML='Für das Handy gibt es die <a href="'+esc(cfg.ANDROID_APP_URL||"Unitopia.apk")+'" download="Unitopia.apk">Mitarbeiter-App</a> (Aufträge mit Benachrichtigung). Zum Installieren die Datei „Unitopia.apk“ herunterladen und öffnen.';}}
  $("#sound-toggle").addEventListener("click",()=>{SPPush.setSound(!SPPush.soundOn());updateNotifyUI();});
  init();
 })();

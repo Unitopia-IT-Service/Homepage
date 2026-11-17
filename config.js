@@ -4,5 +4,7 @@
 // NIEMALS den service_role- bzw. Secret-Key hier eintragen!
 window.UNITOPIA_CONFIG = {
   SUPABASE_URL: "https://nkvrrouwuvjarcrctrlr.supabase.co",
-  SUPABASE_ANON_KEY: "sb_publishable_Zv_dmPBQnahjEmmiX9Nj_g_BofJyBPz"
+  SUPABASE_ANON_KEY: "sb_publishable_Zv_dmPBQnahjEmmiX9Nj_g_BofJyBPz",
+  // Nach dem Bauen der Android-App (APK) hier die Download-Adresse eintragen, z. B. "https://deine-domain.de/download/Unitopia.apk"
+  ANDROID_APP_URL: ""
 };
