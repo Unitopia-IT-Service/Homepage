@@ -1,0 +1,11 @@
+# Nur nötig, wenn du die Functions per Supabase-CLI bereitstellst.
+# Die Anmeldung der Mitarbeiter prüfen die Functions selbst (verify_jwt = false),
+# damit sie auch mit den neuen "Publishable Keys" (sb_publishable_...) funktionieren.
+[functions.submit-inquiry]
+verify_jwt = false
+[functions.manage-inquiry]
+verify_jwt = false
+[functions.manage-team]
+verify_jwt = false
+[functions.push-notify]
+verify_jwt = false

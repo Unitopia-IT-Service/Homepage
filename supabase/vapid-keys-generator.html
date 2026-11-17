@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>VAPID-Schlüssel erzeugen – Unitopia IT-Service</title>
+<style>body{font:16px/1.5 system-ui,sans-serif;background:#061A1A;color:#fff;max-width:720px;margin:40px auto;padding:0 18px}h1{margin:0 0 6px}p{color:#bdbdbd}button{background:linear-gradient(90deg,#2DD4BF,#4ADE80);border:0;border-radius:999px;padding:12px 22px;font-weight:700;color:#04201E;cursor:pointer;font-size:1rem}
+label{display:block;margin:20px 0 6px;font-weight:700}textarea{width:100%;box-sizing:border-box;background:#0C2626;color:#fff;border:1px solid #1E3B3B;border-radius:10px;padding:10px;font:14px ui-monospace,monospace}.warn{background:#0C2626;border:1px solid #2DD4BF;border-radius:10px;padding:12px 14px;margin-top:20px;color:#fff}</style></head><body>
+<h1>VAPID-Schlüssel erzeugen</h1>
+<p>Diese Schlüssel brauchst du einmalig für die Handy-Benachrichtigungen. Alles läuft nur in deinem Browser, nichts wird gesendet.</p>
+<button id="go">Schlüssel erzeugen</button>
+<label for="pub">VAPID_PUBLIC_KEY</label><textarea id="pub" rows="2" readonly></textarea>
+<label for="priv">VAPID_PRIVATE_KEY</label><textarea id="priv" rows="2" readonly></textarea>
+<div class="warn">Den privaten Schlüssel niemals auf die Website oder in config.js legen. Er gehört nur in die Supabase-Secrets (siehe ANLEITUNG-SUPABASE.md, Schritt 6).</div>
+<script>
+const b64u=b=>btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+const fromB64u=s=>Uint8Array.from(atob(s.replace(/-/g,"+").replace(/_/g,"/")),c=>c.charCodeAt(0));
+document.getElementById("go").onclick=async()=>{
+ const k=await crypto.subtle.generateKey({name:"ECDSA",namedCurve:"P-256"},true,["sign","verify"]);
+ const j=await crypto.subtle.exportKey("jwk",k.privateKey);
+ const x=fromB64u(j.x),y=fromB64u(j.y),pub=new Uint8Array(65);pub[0]=4;pub.set(x,1);pub.set(y,33);
+ document.getElementById("pub").value=b64u(pub);document.getElementById("priv").value=j.d;
+};
+</script></body></html>
