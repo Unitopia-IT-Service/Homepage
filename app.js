@@ -36,5 +36,33 @@
     finally{submit.disabled=false;submit.innerHTML='Anfrage senden <span>↗</span>';}
   });
 
+
+  /* ---------- Über uns: Filter und Team ---------- */
+  $$(".adv-filter button").forEach(b=>b.addEventListener("click",()=>{const team=b.dataset.f==="team";$$(".adv-filter button").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));$$(".adv").forEach(c=>c.hidden=b.dataset.f!=="all"&&c.dataset.c!==b.dataset.f);const g=$("#adv-grid"),tp=$("#team-panel");if(g)g.hidden=team;if(tp)tp.hidden=!team;}));
+  const cT=window.UNITOPIA_CONFIG||{},teamBox=$("#team-list");
+  if(teamBox){
+    let tSig="",sbT=null;
+    const hx=s=>String(s??"").replace(/[&<>"']/g,x=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[x]));
+    const none=()=>{teamBox.innerHTML='<p class="events-empty">Unser Team stellen wir hier bald vor.</p>';};
+    const ready=window.supabase&&cT.SUPABASE_URL&&!cT.SUPABASE_URL.includes("DEIN-PROJEKT");
+    const getSb=()=>sbT||(sbT=window.supabase.createClient(cT.SUPABASE_URL,cT.SUPABASE_ANON_KEY));
+    const loadTeam=async()=>{
+      if(!ready){none();return;}
+      try{
+        const {data,error}=await getSb().from("team_members").select("name,role,description,photo_path").eq("published",true).order("sort_order",{ascending:true});
+        if(error)throw error;
+        const sg=JSON.stringify(data||[]);if(sg===tSig)return;tSig=sg;
+        if(!data||!data.length){none();return;}
+        teamBox.innerHTML=data.map(m=>`<article class="team-row"><figure class="team-photo">${m.photo_path?`<img src="${cT.SUPABASE_URL}/storage/v1/object/public/team/${encodeURIComponent(m.photo_path)}" alt="${hx(m.name)}${m.role?", "+hx(m.role):""}" loading="lazy" decoding="async">`:""}</figure><div class="team-text">${m.role?`<p class="team-role">${hx(m.role)}</p>`:""}<h3>${hx(m.name)}</h3>${m.description?`<p>${hx(m.description).replace(/\n/g,"<br>")}</p>`:""}</div></article>`).join("");
+      }catch(e){console.error(e);if(!tSig)none();}
+    };
+    loadTeam();
+    if(ready){
+      setInterval(()=>{if(!document.hidden)loadTeam();},30000);
+      document.addEventListener("visibilitychange",()=>{if(!document.hidden)loadTeam();});
+      try{getSb().channel("unitopia-team-live").on("postgres_changes",{event:"*",schema:"public",table:"team_members"},()=>loadTeam()).subscribe();}catch(e){console.error(e);}
+    }
+  }
+
   const dialog=$("#notice-dialog");if(dialog){const c=$(".dialog-close",dialog);if(c)c.addEventListener("click",()=>dialog.close());}
 })();
