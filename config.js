@@ -3,6 +3,6 @@
 // Der anon- bzw. Publishable-Key darf im Frontend stehen, weil die Zugriffsregeln (RLS) die Daten schützen.
 // NIEMALS den service_role- bzw. Secret-Key hier eintragen!
 window.UNITOPIA_CONFIG = {
-  SUPABASE_URL: "https://DEIN-PROJEKT.supabase.co",
-  SUPABASE_ANON_KEY: "DEIN-ANON-ODER-PUBLISHABLE-KEY"
+  SUPABASE_URL: "https://nkvrrouwuvjarcrctrlr.supabase.co",
+  SUPABASE_ANON_KEY: "sb_publishable_Zv_dmPBQnahjEmmiX9Nj_g_BofJyBPz"
 };
