@@ -23,7 +23,7 @@
   currentUser=user;$("#login-panel").hidden=true;$("#dashboard").hidden=false;$("#user-label").textContent=user.email;
   await loadRequests();startLive();updateNotifyUI();loadTeamSite();
   const {data:profile}=await sb.from("profiles").select("role").eq("id",user.id).single();
-  if(profile?.role==="admin"){$("#employee-panel").hidden=false;await loadTeam();}
+  if(profile?.role==="admin"){$("#employee-panel").hidden=false;$("#acc-link").hidden=false;await loadTeam();}
  }
  $("#login-form").addEventListener("submit",async e=>{e.preventDefault();const f=new FormData(e.currentTarget);const {data,error}=await sb.auth.signInWithPassword({email:f.get("email"),password:f.get("password")});if(error){$("#login-error").textContent="Anmeldung fehlgeschlagen. Bitte Zugangsdaten prüfen.";return;}$("#login-error").textContent="";await enter(data.user);});
  $("#password-form").addEventListener("submit",async e=>{e.preventDefault();const f=new FormData(e.currentTarget),a=f.get("password"),b=f.get("password2"),err=$("#password-error");
