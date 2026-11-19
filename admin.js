@@ -13,6 +13,7 @@
  /* ---------- Anmeldung / Passwort ---------- */
  const qs=new URLSearchParams(location.search),inviteToken=qs.get("invite"),inviteType=qs.get("type")==="recovery"?"recovery":"invite";
  async function init(){
+  if(/error_code=|error=access_denied/.test(location.hash)){const e=$("#login-error");history.replaceState(null,"",location.pathname);if(e)e.textContent=/otp_expired|expired/.test(decodeURIComponent(location.hash+" "))||true?"Der Link ist abgelaufen oder wurde schon einmal geöffnet (z. B. vom E-Mail-Programm). Bitte unten „Passwort vergessen?“ nutzen oder dich neu einladen lassen.":"";}
   if(inviteToken){$("#login-panel").hidden=true;$("#dashboard").hidden=true;$("#password-panel").hidden=false;return;}
   const invited=/type=(invite|recovery)/.test(location.hash);
   const {data:{session}}=await sb.auth.getSession();

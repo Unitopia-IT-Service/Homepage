@@ -158,13 +158,38 @@ function docHTML(d,kind){const c=calc(d),kl=S.kleinunt,cu=cust(d.cust)||{},off=k
  ${off?"<p>Dieses Angebot ist gültig bis "+dde(d.valid)+".</p>":`<p>${d.k2==="Storno"?"Diese Stornorechnung hebt die genannte Rechnung auf.":`Bitte zahlen Sie bis <b>${dde(d.due)}</b> ohne Abzug auf das unten genannte Konto.`}</p>`}${d.note?`<p>${esc(d.note)}</p>`:""}${footer()}`}
 
 const pdfName=(d,k)=>((k==="offer"?"Angebot":d.k2)+"-"+(d.no||"Entwurf")).replace(/[^\w\-äöüÄÖÜß]/g,"_")+".pdf";
-function loadLib(){return window.html2pdf?Promise.resolve():new Promise((ok,no)=>{const sc=document.createElement("script");sc.src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";sc.onload=ok;sc.onerror=()=>no(new Error("PDF-Bibliothek konnte nicht geladen werden."));document.head.appendChild(sc)})}
-async function makePdf(d,k){await loadLib();const el=document.createElement("div");el.className="pdoc";
- el.style.cssText="width:760px;background:#fff;color:#111;font:13px Arial,sans-serif";
- el.innerHTML=`<style>.pdoc table{width:100%;border-collapse:collapse}.pdoc th{text-align:left;border-bottom:2px solid #111;padding:5px;font-size:11px}.pdoc td{padding:5px;border-bottom:1px solid #ddd;vertical-align:top}.pdoc .n{text-align:right;white-space:nowrap}.pdoc .f{margin-top:34px;border-top:1px solid #999;padding-top:8px;font-size:10px;color:#444}.pdoc tr{page-break-inside:avoid}</style>`+docHTML(d,k);
- try{await Promise.all([...el.querySelectorAll("img")].map(i=>i.complete?1:new Promise(r=>{i.onload=i.onerror=r})));
-  const uri=await window.html2pdf().set({margin:[12,12,12,12],image:{type:"jpeg",quality:.95},html2canvas:{scale:2,useCORS:true,backgroundColor:"#ffffff",windowWidth:800,scrollX:0,scrollY:0},jsPDF:{unit:"mm",format:"a4"},pagebreak:{mode:["css","legacy"]}}).from(el).outputPdf("datauristring");
-  return uri.split(",")[1]}finally{}}
+function loadLib(){return window.jspdf?Promise.resolve():new Promise((ok,no)=>{const sc=document.createElement("script");sc.src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";sc.onload=ok;sc.onerror=()=>no(new Error("PDF-Bibliothek konnte nicht geladen werden."));document.head.appendChild(sc)})}
+const logoPng=()=>new Promise(res=>{const im=new Image();im.onload=()=>{try{const c=document.createElement("canvas");c.width=im.naturalWidth;c.height=im.naturalHeight;c.getContext("2d").drawImage(im,0,0);res({url:c.toDataURL("image/png"),w:im.naturalWidth,h:im.naturalHeight})}catch(_){res(null)}};im.onerror=()=>res(null);im.src=new URL("assets/logo-wortmarke.webp",location.href).href});
+// Echtes Text-PDF (scharf, kopierbar) – ohne Bildschirmfoto-Trick
+async function makePdf(d,k){await loadLib();const {jsPDF}=window.jspdf,doc=new jsPDF({unit:"mm",format:"a4"});
+ const c=calc(d),cu=cust(d.cust)||{},off=k==="offer",kl=S.kleinunt,title=off?"Angebot":d.k2,X=20,XR=190,W=XR-X,m=n=>eur(n).replace(/\u00a0/g," ");
+ const T=(t,x,y,o={},sz=10,b=false,col=[17,17,17])=>{doc.setFont("helvetica",b?"bold":"normal");doc.setFontSize(sz);doc.setTextColor(...col);doc.text(String(t),x,y,o)};
+ const wrap=(t,w,sz)=>{doc.setFont("helvetica","normal");doc.setFontSize(sz);return doc.splitTextToSize(String(t||""),w)};
+ const seller=[S.company,S.owner&&"Inh. "+S.owner,S.street,[S.zip,S.city].filter(Boolean).join(" ")].filter(Boolean).join(" · ");
+ const lg=await logoPng();if(lg){const w=55;doc.addImage(lg.url,"PNG",XR-w,12,w,w*lg.h/lg.w)}
+ T(seller,X,42,{},7,false,[110,110,110]);
+ let y=49;[cname(cu),cu.company&&(cu.first||cu.last)?[cu.first,cu.last].join(" "):"",cu.street,[cu.zip,cu.city].filter(Boolean).join(" "),cu.country&&cu.country!=="Deutschland"?cu.country:""].filter(Boolean).forEach(t=>{T(t,X,y,{},10);y+=4.8});
+ if(cu.no){T("Kundennr.: "+cu.no,X,y,{},8,false,[90,90,90]);y+=4}if(cu.vatid){T("USt-IdNr.: "+cu.vatid,X,y,{},8,false,[90,90,90]);y+=4}
+ y=Math.max(y,78)+8;T(title+" "+(d.no||"(Entwurf)"),X,y,{},15,true);y+=8;
+ const info=[["Datum:",dde(d.date)]];if(off)info.push(["Gültig bis:",dde(d.valid)]);else{info.push(["Leistungsdatum:",dde(d.svcDate)+(d.svcTo?" bis "+dde(d.svcTo):"")]);if(d.ref)info.push(["Bezug:",d.ref])}
+ info.forEach(([a,b])=>{T(a,X,y,{},9.5,true);T(b,X+32,y,{},9.5);y+=5});y+=5;
+ const col={q:118,p:142,r:156,v:168,n:XR},head=()=>{T("Pos.",X,y,{},8.5,true);T("Bezeichnung",X+9,y,{},8.5,true);T("Menge",col.q,y,{align:"right"},8.5,true);T("Einzelpreis netto",col.p,y,{align:"right"},8.5,true);T("Rabatt",col.r,y,{align:"right"},8.5,true);if(!kl)T("USt",col.v,y,{align:"right"},8.5,true);T("Netto",col.n,y,{align:"right"},8.5,true);doc.setDrawColor(17);doc.setLineWidth(.5);doc.line(X,y+2,XR,y+2);y+=7};
+ const room=h=>{if(y+h>262){doc.addPage();y=22;head()}};
+ head();let pos=0;
+ ["Arbeit","Material"].forEach(g=>{const ls=c.ls.filter(l=>(l.grp||"Arbeit")===g&&(l.name||l.price));if(!ls.length)return;room(14);T(g==="Arbeit"?"Arbeitsleistung":"Material / Hardware",X,y,{},9.5,true);y+=5.5;
+  ls.forEach(l=>{const nm=wrap(l.name,70,9.5),ds=l.desc?wrap(l.desc,70,8):[],h=nm.length*4.4+ds.length*3.6+3;room(h);pos++;
+   T(pos,X,y,{},9.5);T(nm,X+9,y,{},9.5);if(ds.length)T(ds,X+9,y+nm.length*4.4-0.4,{},8,false,[90,90,90]);
+   T(num(l.qty)+" "+l.unit,col.q,y,{align:"right"},9.5);T(m(l.price),col.p,y,{align:"right"},9.5);if(num(l.disc))T(num(l.disc)+" %",col.r,y,{align:"right"},9.5);if(!kl)T(l.rt+" %",col.v,y,{align:"right"},9.5);T(m(l.n),col.n,y,{align:"right"},9.5);
+   y+=h;doc.setDrawColor(215);doc.setLineWidth(.2);doc.line(X,y-2.6,XR,y-2.6)})});
+ room(40);y+=4;
+ if(!kl){c.gr.forEach(g=>{T(`Netto ${g.rt} %: ${m(g.net)}   ·   USt ${g.rt} %: ${m(g.vat)}`,XR,y,{align:"right"},9.5);y+=5});T("Summe netto: "+m(c.net),XR,y,{align:"right"},9.5);y+=5;T("Umsatzsteuer: "+m(c.vat),XR,y,{align:"right"},9.5);y+=6}
+ T("Gesamtbetrag: "+m(c.gross),XR,y,{align:"right"},12.5,true);y+=11;
+ const notes=[];if(kl)notes.push("Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.");if(d.rc&&!kl)notes.push("Steuerschuldnerschaft des Leistungsempfängers (§ 13b UStG).");
+ notes.push(off?"Dieses Angebot ist gültig bis "+dde(d.valid)+".":d.k2==="Storno"?"Diese Stornorechnung hebt die genannte Rechnung auf.":"Bitte zahlen Sie bis "+dde(d.due)+" ohne Abzug auf das unten genannte Konto.");if(d.note)notes.push(d.note);
+ notes.forEach(t=>{const ls=wrap(t,W,9.5);room(ls.length*4.6+4);T(ls,X,y,{},9.5);y+=ls.length*4.6+2});
+ const f1=seller,f2=[S.taxno&&"Steuernr.: "+S.taxno,S.vatid&&"USt-IdNr.: "+S.vatid,S.email,S.phone].filter(Boolean).join(" · "),f3=S.iban?["Bank: "+(S.bank||""),"IBAN "+S.iban,S.bic&&"BIC "+S.bic].filter(Boolean).join(" · "):"";
+ for(let i=1;i<=doc.getNumberOfPages();i++){doc.setPage(i);doc.setDrawColor(150);doc.setLineWidth(.2);doc.line(X,277,XR,277);[f1,f2,f3].filter(Boolean).forEach((t,j)=>T(t,X,281+j*3.6,{},7,false,[90,90,90]));if(doc.getNumberOfPages()>1)T(`Seite ${i} von ${doc.getNumberOfPages()}`,XR,281,{align:"right"},7,false,[90,90,90])}
+ return doc.output("datauristring").split(",")[1]}
 
 /* ---------- Aktionen Dokument ---------- */
 async function stornoOrKorr(storno){const r=byId(ed.id),d=r.data;const lines=d.lines.map(l=>({...l,qty:storno?-num(l.qty):l.qty}));

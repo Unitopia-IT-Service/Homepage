@@ -7,6 +7,6 @@ window.UNITOPIA_CONFIG = {
   SUPABASE_ANON_KEY: "sb_publishable_Zv_dmPBQnahjEmmiX9Nj_g_BofJyBPz",
   // Nach dem Bauen der Android-App (APK) hier die Download-Adresse eintragen, z. B. "https://deine-domain.de/download/Unitopia.apk"
   // Adresse deiner echten Website OHNE Schrägstrich am Ende, z. B. "https://deine-domain.de". Wird für Einladungs- und Passwort-Links benutzt (nie localhost).
-  SITE_URL: "https://unitopia-it-service.github.io/Homepage/",
-  //ANDROID_APP_URL: ""
+  SITE_URL: "",
+  ANDROID_APP_URL: ""
 };

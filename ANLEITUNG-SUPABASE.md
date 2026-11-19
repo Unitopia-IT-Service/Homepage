@@ -120,3 +120,8 @@ Das liegt an zwei Einstellungen. Beide setzen:
 1. **Supabase → Authentication → URL Configuration:** **Site URL** = deine echte Website (z. B. `https://deine-domain.de`, NICHT `http://localhost:3000`). Unter **Redirect URLs** zusätzlich `https://deine-domain.de/admin.html` eintragen. Ist die Adresse dort nicht erlaubt, nimmt Supabase die Site URL als Ersatz.
 2. **`config.js`:** bei `SITE_URL` deine echte Website-Adresse eintragen (ohne Schrägstrich am Ende). Einladungen und „Passwort vergessen?“ benutzen dann immer diese Adresse, auch wenn du die Seite gerade lokal geöffnet hast.
 Alte, bereits verschickte Links bleiben kaputt – bitte neu einladen bzw. „Passwort vergessen?“ erneut nutzen.
+
+## Fehler „otp_expired – Email link is invalid or has expired“
+- Der Link ist nur einmal und nur begrenzt gültig (Standard 1 Stunde: **Authentication → Sign In / Providers → Email → Email OTP Expiration**, dort bis 86400 s einstellbar). Mail-Programme/Virenscanner (auch GMX) öffnen Links manchmal vorab und „verbrauchen“ sie.
+- Die Vorlagen **Invite user** und **Reset password** müssen die Variante mit `{{ .RedirectTo }}?invite={{ .TokenHash }}&type=…` enthalten (Schritt 5), NICHT `{{ .ConfirmationURL }}`. Nur dann wird der Link erst beim Klick auf „Passwort speichern“ verbraucht.
+- Danach neuen Link anfordern („Passwort vergessen?“ auf der Login-Seite) – alte Links funktionieren nicht mehr.
