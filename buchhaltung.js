@@ -34,6 +34,26 @@ async function save(kind,data,id,extra={}){
 async function del(id){const {error}=await sb.from("acc_records").delete().eq("id",id);if(error){alert(error.message);return false}R=R.filter(r=>r.id!==id);return true}
 function nextNo(kind,prefix,yearly=true){const p=yearly?`${prefix}-${new Date().getFullYear()}-`:`${prefix}-`;
  const m=Math.max(0,...L(kind).map(r=>r.data.no).filter(n=>n&&n.startsWith(p)).map(n=>+n.slice(p.length)||0));return p+String(m+1).padStart(4,"0")}
+// Kundennr.: kleinste freie Nummer, gelöschte Nummern werden also wiederverwendet. (Rechnungs-/Angebotsnummern nutzen weiter nextNo und werden NIE wiederverwendet.)
+function freeNo(kind,prefix){const p=prefix+"-",used=new Set(L(kind).map(r=>r.data.no).filter(n=>n&&n.startsWith(p)).map(n=>+n.slice(p.length)||0));let n=1;while(used.has(n))n++;return p+String(n).padStart(4,"0")}
+// Katalog: Nummern wie L001, A001 (Buchstabe + Zahl)
+const catParts=no=>{const m=/^([A-Za-z]+)(\d+)$/.exec(String(no||"").trim());return m?{p:m[1].toUpperCase(),n:+m[2]}:null};
+const gi=p=>{const i=["L","A"].indexOf(p);return i<0?9:i}; // Leistungen (L) vor Artikeln (A)
+const catSort=(a,b)=>{const x=catParts(a.data.no),y=catParts(b.data.no);if(!x||!y)return (!x)-(!y);return gi(x.p)-gi(y.p)||x.p.localeCompare(y.p)||x.n-y.n};
+function nextCatNo(p){const m=Math.max(0,...L("catalog").map(r=>catParts(r.data.no)).filter(x=>x&&x.p===p).map(x=>x.n));return p+String(m+1).padStart(3,"0")}
+// Nach dem Löschen rücken die Nummern lückenlos auf (L001 L002 L004 -> L001 L002 L003). Nur die Gruppe (Buchstabe) der gelöschten Position wird angepasst.
+async function renumberCatalog(only){const g={};
+ L("catalog").forEach(r=>{const x=catParts(r.data.no);if(x&&(!only||x.p===only))(g[x.p]=g[x.p]||[]).push({r,n:x.n})});
+ const jobs=[];
+ for(const p of Object.keys(g)){g[p].sort((a,b)=>a.n-b.n||String(a.r.created_at).localeCompare(String(b.r.created_at)));
+  g[p].forEach(({r},i)=>{const no=p+String(i+1).padStart(3,"0");if(r.data.no!==no)jobs.push(save("catalog",{...r.data,no},r.id))})}
+ await Promise.all(jobs)}
+// Kunde löschen: nur ohne Rechnungen/Angebote (die holen Name und Adresse aus dem Kundendatensatz)
+async function delCust(id){const r=byId(id);if(!r)return;
+ const docs=[...L("invoice"),...L("offer")].filter(x=>x.data.cust===id);
+ if(docs.length){alert(`Kunde ${r.data.no} „${cname(r.data)}“ kann nicht gelöscht werden: Es gibt ${docs.length} Rechnung(en)/Angebot(e) zu diesem Kunden. Entwürfe kannst du vorher löschen. Festgeschriebene Rechnungen müssen aufbewahrt werden und brauchen die Kundendaten.`);return}
+ if(!confirm(`Kunde ${r.data.no} „${cname(r.data)}“ endgültig löschen?\nDie Kundennr. ${r.data.no} wird danach wieder frei und für den nächsten neuen Kunden verwendet.`))return;
+ if(await del(id)){dlg.close();render()}}
 
 /* ---------- Berechnung ---------- */
 function calc(d){const free=S.kleinunt||d.rc,g={};let net=0;
@@ -100,7 +120,7 @@ function custForm(id){const r=id?byId(id):null,c=r?.data||{type:"privat",country
  const hist=r?L("invoice").filter(x=>x.data.cust===id):[];const open=sum(hist.filter(x=>isFinal(x)&&x.data.status==="Offen"),openAmt);
  const extra=r?`<h3 style="margin-top:20px">Kundenhistorie</h3><p class="hint">Offene Forderungen: <b>${eur(open)}</b></p>${table(["Dokument","Datum","Brutto","Bezahlt","Status"],[...hist,...L("offer").filter(x=>x.data.cust===id)].map(x=>`<tr><td>${esc((x.kind==="offer"?"Angebot ":"")+(x.data.no||"Entwurf"))}</td><td>${dde(x.data.date)}</td><td class="n">${eur(calc(x.data).gross)}</td><td class="n">${eur(paid(x.data))}</td><td>${esc(x.data.status)}</td></tr>`))}`:"";
  form(id?"Kunde bearbeiten":"Neuer Kunde",sel("Art","type",[["privat","Privatkunde"],["firma","Geschäftskunde"]],c.type)+fld("Firma","company",c.company)+fld("Vorname","first",c.first)+fld("Nachname","last",c.last)+fld("Straße und Hausnummer","street",c.street)+fld("PLZ","zip",c.zip)+fld("Ort","city",c.city)+fld("Land","country",c.country)+fld("E-Mail","email",c.email,'type="email"')+fld("Telefon","phone",c.phone)+fld("Ansprechpartner","contact",c.contact)+fld("Lieferadresse (falls abweichend)","ship",c.ship,"","w")+fld("Steuernummer","taxno",c.taxno)+fld("USt-IdNr.","vatid",c.vatid)+`<label class="w">Interne Notizen<textarea name="notes" rows="3">${esc(c.notes)}</textarea></label>`,
- async o=>{if(!o.company&&!o.last){alert("Bitte Firma oder Nachname angeben.");return false}o.no=c.no||nextNo("customer","KD",false);return !!await save("customer",o,id)},extra)}
+ async o=>{if(!o.company&&!o.last){alert("Bitte Firma oder Nachname angeben.");return false}o.no=c.no||freeNo("customer","KD");return !!await save("customer",o,id)},extra+(r?`<div class="acc-bar" style="margin-top:14px"><button type="button" class="button button-ghost btn-danger" data-delcust="${id}">Kunde löschen</button></div>`:""))}
 function vCust(v){const q=flt.q.toLowerCase();v.innerHTML=`<div class="acc-h"><h2>Kunden</h2><div class="acc-bar"><input id="q" placeholder="Suchen …" value="${esc(flt.q)}"><button class="button button-primary" data-act="newcust">+ Neuer Kunde</button></div></div>${table(["Nr.","Name","Art","Ort","E-Mail","Telefon","Offen"],L("customer").filter(r=>!q||JSON.stringify(r.data).toLowerCase().includes(q)).map(r=>`<tr class="r" data-cust="${r.id}"><td>${esc(r.data.no)}</td><td>${esc(cname(r.data))}</td><td>${r.data.type==="firma"?"Geschäft":"Privat"}</td><td>${esc(r.data.zip+" "+r.data.city)}</td><td>${esc(r.data.email)}</td><td>${esc(r.data.phone)}</td><td class="n">${eur(sum(L("invoice").filter(x=>x.data.cust===r.id&&isFinal(x)&&x.data.status==="Offen"),openAmt))}</td></tr>`))}`;
  $("#q").oninput=e=>{flt.q=e.target.value;vCust(v);$("#q").focus()}}
 
@@ -110,7 +130,7 @@ function newDoc(kind,preset={}){const t=num(S.terms)||14,d=today();
  ed={id:null,kind,locked:false,d:{k2:"Rechnung",date:d,terms:t,due:addDays(d,t),valid:addDays(d,30),status:"Entwurf",lines:[emptyLine()],payments:[],svcDate:d,...preset}};docForm()}
 function openDoc(id){const r=byId(id);ed={id,kind:r.kind,locked:r.locked,d:structuredClone(r.data)};docForm()}
 function docForm(){const {d,kind,locked}=ed,off=kind==="offer",dis=locked?"disabled":"",fin=locked;
- const cat=L("catalog");
+ const cat=L("catalog").slice().sort(catSort);
  modal(`<h3>${off?"Angebot":d.k2} ${esc(d.no||"(Entwurf)")} ${fin?pill(d.status,d.status==="Bezahlt"?"ok":"warn"):""}</h3><form id="f"><fieldset ${dis} style="border:0;padding:0;margin:0"><div class="fg">
  ${off?"":sel("Art","k2",["Rechnung","Abschlagsrechnung","Schlussrechnung","Korrekturrechnung","Storno"],d.k2)}
  ${sel("Kunde","cust",[["","– wählen –"],...L("customer").map(r=>[r.id,r.data.no+" "+cname(r.data)])],d.cust)}
@@ -275,17 +295,17 @@ function vTax(v){const t=taxFigures(),by=t.by,n=r=>by[r]?.net||0;
 
 /* ---------- Einstellungen ---------- */
 function vSet(v){const s=S;v.innerHTML=`<div class="acc-h"><h2>Einstellungen & Firmenstammdaten</h2></div><form id="sf"><div class="fg">${fld("Firmenname","company",s.company||"Unitopia IT-Service")+fld("Inhaber","owner",s.owner||"André Kasper")+fld("Straße","street",s.street||"Hosangweg 2")+fld("PLZ","zip",s.zip||"18528")+fld("Ort","city",s.city||"Bergen auf Rügen")+fld("E-Mail","email",s.email||"Unitopia.itservice@gmx.de")+fld("Telefon","phone",s.phone||"0155 67945706")+fld("Steuernummer","taxno",s.taxno)+fld("USt-IdNr.","vatid",s.vatid)+fld("Bank","bank",s.bank)+fld("IBAN","iban",s.iban)+fld("BIC","bic",s.bic)+fld("Standard-Zahlungsziel (Tage)","terms",s.terms||14,'type="number"')+sel("Standard-USt","vat",[19,7,0],s.vat??19)+sel("Kleinunternehmer § 19 UStG","kleinunt",[["","Nein"],["1","Ja"]],s.kleinunt?"1":"")+sel("Versteuerung","soll",[["","Ist-Versteuerung (nach Zahlung)"],["1","Soll-Versteuerung (nach Rechnung)"]],s.soll?"1":"")+sel("Kontenrahmen","skr",["SKR03","SKR04"],s.skr||"SKR03")+fld("Basiszinssatz % (Bundesbank, aktuell eintragen)","basis",s.basis||0,'type="number" step="0.01"')+fld("Mahngebühren je Stufe (€, kommagetrennt)","fees",s.fees||"0,5,5,5")+`<label class="w">E-Mail-Text Rechnung (Platzhalter: {name} {nr} {betrag} {faellig})<textarea name="mailInv" rows="5">${esc(s.mailInv||MAIL_INV)}</textarea></label><label class="w">E-Mail-Text Angebot<textarea name="mailOff" rows="5">${esc(s.mailOff||MAIL_OFF)}</textarea></label>`}</div><div class="acc-bar" style="margin-top:14px"><button class="button button-primary">Speichern</button></div></form>
- <h3 style="margin-top:28px">Leistungs- & Artikelkatalog</h3><p class="hint">Zeile anklicken zum Bearbeiten (Preis, Einheit, USt, Bezeichnung).</p><div class="acc-bar"><button class="button button-ghost" data-act="newcat">+ Position</button><button class="button button-ghost" data-act="seed">Standardleistungen & Hardware anlegen</button></div>${table(["Nr.","Bezeichnung","Art","Einheit","Preis netto","USt",""],L("catalog").map(r=>`<tr class="r" data-cat="${r.id}"><td>${esc(r.data.no)}</td><td>${esc(r.data.name)}</td><td>${esc(r.data.type)}</td><td>${esc(r.data.unit)}</td><td class="n">${eur(r.data.price)}</td><td>${r.data.vat} %</td><td><a href="#" data-delcat="${r.id}">löschen</a></td></tr>`))}
+ <h3 style="margin-top:28px">Leistungs- & Artikelkatalog</h3><p class="hint">Zeile anklicken zum Bearbeiten (Preis, Einheit, USt, Bezeichnung).</p><div class="acc-bar"><button class="button button-ghost" data-act="newcat">+ Position</button><button class="button button-ghost" data-act="seed">Standardleistungen & Hardware anlegen</button></div>${table(["Nr.","Bezeichnung","Art","Einheit","Preis netto","USt",""],L("catalog").slice().sort(catSort).map(r=>`<tr class="r" data-cat="${r.id}"><td>${esc(r.data.no)}</td><td>${esc(r.data.name)}</td><td>${esc(r.data.type)}</td><td>${esc(r.data.unit)}</td><td class="n">${eur(r.data.price)}</td><td>${r.data.vat} %</td><td><a href="#" data-delcat="${r.id}">löschen</a></td></tr>`))}
  <h3>Daten & Protokoll</h3><div class="acc-bar"><button class="button button-ghost" data-act="backup">Datensicherung (JSON)</button><button class="button button-ghost" data-act="log">Änderungsprotokoll</button></div><p class="hint">Supabase erstellt die serverseitigen Backups; die JSON-Sicherung ist ein zusätzlicher Export aller Datensätze.</p>`;
  $("#sf").onsubmit=async e=>{e.preventDefault();const o=Object.fromEntries(new FormData(e.target));o.kleinunt=!!o.kleinunt;o.soll=!!o.soll;if(await save("settings",o,L("settings")[0]?.id)){alert("Gespeichert.");render()}}}
-const catForm=id=>{const c=id?byId(id).data:{type:"Arbeit",unit:"Pauschale",price:0,vat:S.vat??19};return form(id?"Position bearbeiten":"Katalogposition",fld("Nr.","no",c.no)+fld("Bezeichnung","name",c.name,"required")+sel("Art","type",["Arbeit","Material"],c.type)+sel("Einheit","unit",["Stück","Stunde","Auftrag","Pauschale"],c.unit)+fld("Preis netto (€)","price",c.price,'type="number" step="0.01"')+sel("USt %","vat",[19,7,0],c.vat)+fld("Beschreibung","desc",c.desc,"","w"),async o=>{o.price=num(o.price);o.vat=num(o.vat);return !!await save("catalog",o,id)})};
-async function seed(){if(L("catalog").length&&!confirm("Katalog hat bereits Einträge. Standardpositionen trotzdem hinzufügen?"))return;let i=L("catalog").length;
- for(const n of SERV)await save("catalog",{no:"L"+String(++i).padStart(3,"0"),name:n,type:"Arbeit",unit:/Webseite erstellung|Erstellung/.test(n)?"Pauschale":"Stunde",price:0,vat:19});
- for(const n of HW)await save("catalog",{no:"A"+String(++i).padStart(3,"0"),name:n,type:"Material",unit:"Stück",price:0,vat:19});render()}
+const catForm=id=>{const c=id?byId(id).data:{type:"Arbeit",unit:"Pauschale",price:0,vat:S.vat??19};return form(id?"Position bearbeiten":"Katalogposition",fld("Nr. (leer lassen = automatisch)","no",c.no)+fld("Bezeichnung","name",c.name,"required")+sel("Art","type",["Arbeit","Material"],c.type)+sel("Einheit","unit",["Stück","Stunde","Auftrag","Pauschale"],c.unit)+fld("Preis netto (€)","price",c.price,'type="number" step="0.01"')+sel("USt %","vat",[19,7,0],c.vat)+fld("Beschreibung","desc",c.desc,"","w"),async o=>{o.price=num(o.price);o.vat=num(o.vat);o.no=String(o.no||"").trim()||nextCatNo(o.type==="Material"?"A":"L");return !!await save("catalog",o,id)})};
+async function seed(){if(L("catalog").length&&!confirm("Katalog hat bereits Einträge. Standardpositionen trotzdem hinzufügen?"))return;
+ for(const n of SERV)await save("catalog",{no:nextCatNo("L"),name:n,type:"Arbeit",unit:/Webseite erstellung|Erstellung/.test(n)?"Pauschale":"Stunde",price:0,vat:19});
+ for(const n of HW)await save("catalog",{no:nextCatNo("A"),name:n,type:"Material",unit:"Stück",price:0,vat:19});render()}
 async function showLog(){const {data}=await sb.from("acc_log").select("*").order("at",{ascending:false}).limit(60);modal(`<h3>Änderungsprotokoll (letzte 60)</h3>${table(["Zeit","Aktion","Art","Datensatz"],(data||[]).map(x=>`<tr><td>${new Date(x.at).toLocaleString("de-DE")}</td><td>${x.action}</td><td>${x.kind}</td><td>${esc((x.new_data||x.old_data||{}).no||(x.new_data||x.old_data||{}).supplier||x.record_id.slice(0,8))}</td></tr>`))}`)}
 
 /* ---------- Events ---------- */
-document.addEventListener("click",async e=>{const t=e.target.closest("[data-act],[data-view],[data-new],[data-open],[data-cust],[data-exp],[data-dun],[data-st],[data-file],[data-delcat],[data-cat]");if(!t)return;const D=t.dataset;
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-act],[data-view],[data-new],[data-open],[data-cust],[data-exp],[data-dun],[data-st],[data-file],[data-delcat],[data-delcust],[data-cat]");if(!t)return;const D=t.dataset;
  if(D.view){view=D.view;flt.q="";render()}
  else if(D.new)newDoc(D.new);
  else if(D.open)openDoc(D.open);
@@ -295,8 +315,9 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-act]
  else if(D.cat)catForm(D.cat);
  else if(D.st)patch({status:D.st});
  else if(D.file){e.preventDefault();e.stopPropagation();const {data}=await sb.storage.from("acc-docs").createSignedUrl(D.file,120);if(data)window.open(data.signedUrl)}
- else if(D.delcat){e.preventDefault();if(confirm("Position löschen?")&&await del(D.delcat))render()}
- else if(D.act){const a=D.act;({newexp:()=>expForm(),newbook:bookForm,newcat:catForm,seed,log:showLog,
+ else if(D.delcat){e.preventDefault();const pr=catParts(byId(D.delcat)?.data.no)?.p;if(confirm("Position löschen?\nDie Nummern der übrigen Positionen rücken automatisch auf.")&&await del(D.delcat)){await renumberCatalog(pr);render()}}
+ else if(D.delcust){e.preventDefault();await delCust(D.delcust)}
+ else if(D.act){const a=D.act;({newexp:()=>expForm(),newbook:bookForm,newcat:()=>catForm(),seed,log:showLog,
   csvj:()=>dl(`journal-${per.y}.csv`,csv([["Datum","Text","Art","Konto","Netto","USt","Brutto","Beleg"],...journal().map(x=>[x.date,x.text,x.type,x.acct,x.net,x.vat,r2(x.net+x.vat),x.ref])])),
   csvt:()=>{const t=taxFigures();dl(`steuer-${per.y}-${per.p}.csv`,csv([["Satz","Netto","USt"],...Object.entries(t.by).map(([r,x])=>[r,x.net,x.vat]),["Vorsteuer","",t.vs],["Zahllast","",t.zahl]]))},
   backup:()=>dl(`unitopia-buchhaltung-${today()}.json`,JSON.stringify(R,null,1),"application/json")}[a]||acts[a])?.(t)}});

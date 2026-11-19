@@ -112,7 +112,7 @@ Ohne Bauen geht es auch: `app.html` in Chrome öffnen → Menü → „App insta
 ## Zusatz – Rechnungen & Angebote per E-Mail senden (Buchhaltung)
 1. **Edge Functions → Deploy a new function** → Name `send-document` → Inhalt von `supabase/functions/send-document/index.ts` einfügen → **Verify JWT = AUS** → Deploy.
 2. Es werden dieselben Secrets wie bei den anderen Functions benutzt (`SMTP_USER`, `SMTP_PASS`, …). Nichts Neues nötig.
-3. `supabase/buchhaltung.sql` erneut im SQL-Editor ausführen (ist gefahrlos wiederholbar, ergänzt die Versand-Felder).
+3. `supabase/buchhaltung.sql` erneut im SQL-Editor ausführen (ist gefahrlos wiederholbar, ergänzt die Versand-Felder und die Sperre gegen das Löschen von Kunden mit Rechnungen).
 4. Der E-Mail-Text lässt sich unter Buchhaltung → Einstellungen anpassen.
 
 ## Wichtig – Links in Einladungs- und Passwort-Mails führen auf localhost?
