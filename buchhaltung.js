@@ -160,11 +160,11 @@ function docHTML(d,kind){const c=calc(d),kl=S.kleinunt,cu=cust(d.cust)||{},off=k
 const pdfName=(d,k)=>((k==="offer"?"Angebot":d.k2)+"-"+(d.no||"Entwurf")).replace(/[^\w\-äöüÄÖÜß]/g,"_")+".pdf";
 function loadLib(){return window.html2pdf?Promise.resolve():new Promise((ok,no)=>{const sc=document.createElement("script");sc.src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";sc.onload=ok;sc.onerror=()=>no(new Error("PDF-Bibliothek konnte nicht geladen werden."));document.head.appendChild(sc)})}
 async function makePdf(d,k){await loadLib();const el=document.createElement("div");el.className="pdoc";
- el.style.cssText="position:fixed;left:-10000px;top:0;width:760px;background:#fff;color:#111;font:13px Arial,sans-serif;padding:0";
+ el.style.cssText="width:760px;background:#fff;color:#111;font:13px Arial,sans-serif";
  el.innerHTML=`<style>.pdoc table{width:100%;border-collapse:collapse}.pdoc th{text-align:left;border-bottom:2px solid #111;padding:5px;font-size:11px}.pdoc td{padding:5px;border-bottom:1px solid #ddd;vertical-align:top}.pdoc .n{text-align:right;white-space:nowrap}.pdoc .f{margin-top:34px;border-top:1px solid #999;padding-top:8px;font-size:10px;color:#444}.pdoc tr{page-break-inside:avoid}</style>`+docHTML(d,k);
- document.body.appendChild(el);try{await Promise.all([...el.querySelectorAll("img")].map(i=>i.complete?1:new Promise(r=>{i.onload=i.onerror=r})));
-  const uri=await window.html2pdf().set({margin:[12,12,12,12],image:{type:"jpeg",quality:.95},html2canvas:{scale:2,useCORS:true},jsPDF:{unit:"mm",format:"a4"},pagebreak:{mode:["css","legacy"]}}).from(el).outputPdf("datauristring");
-  return uri.split(",")[1]}finally{el.remove()}}
+ try{await Promise.all([...el.querySelectorAll("img")].map(i=>i.complete?1:new Promise(r=>{i.onload=i.onerror=r})));
+  const uri=await window.html2pdf().set({margin:[12,12,12,12],image:{type:"jpeg",quality:.95},html2canvas:{scale:2,useCORS:true,backgroundColor:"#ffffff",windowWidth:800,scrollX:0,scrollY:0},jsPDF:{unit:"mm",format:"a4"},pagebreak:{mode:["css","legacy"]}}).from(el).outputPdf("datauristring");
+  return uri.split(",")[1]}finally{}}
 
 /* ---------- Aktionen Dokument ---------- */
 async function stornoOrKorr(storno){const r=byId(ed.id),d=r.data;const lines=d.lines.map(l=>({...l,qty:storno?-num(l.qty):l.qty}));
@@ -182,7 +182,10 @@ const acts={
   const sub=(off?"Angebot ":d.k2+" ")+d.no+" – "+(S.company||"Unitopia IT-Service");
   modal(`<h3>${off?"Angebot":d.k2} ${esc(d.no)} per E-Mail senden</h3><div class="fg"><label class="w">An<input id="m-to" value="${esc(c.email||"")}"></label><label class="w">Betreff<input id="m-sub" value="${esc(sub)}"></label><label class="w">Text<textarea id="m-body" rows="11">${esc(body)}</textarea></label></div>
   <p class="hint">📎 Angehängt wird automatisch das PDF „${esc(pdfName(d,ed.kind))}“. Eine Kopie geht an ${esc(S.email||"dein Postfach")}.</p>
-  <div class="acc-bar"><button class="button button-primary" type="button" data-act="mailsend">Jetzt senden</button><button class="button button-ghost" type="button" data-act="mailopen">Im Mail-Programm öffnen</button><button class="button button-ghost" type="button" data-act="mailcopy">Text kopieren</button><button class="button button-ghost" type="button" data-act="back">Zurück</button></div><p id="m-msg" class="hint"></p>`)},
+  <div class="acc-bar"><button class="button button-primary" type="button" data-act="mailsend">Jetzt senden</button><button class="button button-ghost" type="button" data-act="mailprev">PDF-Vorschau</button><button class="button button-ghost" type="button" data-act="mailopen">Im Mail-Programm öffnen</button><button class="button button-ghost" type="button" data-act="mailcopy">Text kopieren</button><button class="button button-ghost" type="button" data-act="back">Zurück</button></div><p id="m-msg" class="hint"></p>`)},
+ mailprev:async()=>{const w=window.open("","_blank"),m=$("#m-msg");m.textContent="PDF wird erstellt …";
+  try{const b64=await makePdf(ed.d,ed.kind),bin=atob(b64),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);const url=URL.createObjectURL(new Blob([u],{type:"application/pdf"}));m.textContent="Vorschau geöffnet.";w?w.location=url:window.open(url)}
+  catch(err){w&&w.close();m.textContent="Fehler: "+(err.message||err)}},
  mailsend:async()=>{const to=$("#m-to").value.trim(),m=$("#m-msg"),btn=$('[data-act="mailsend"]');if(!/^\S+@\S+\.\S+$/.test(to)){m.textContent="Bitte eine gültige E-Mail-Adresse eintragen.";return}
   if(!confirm("E-Mail mit PDF jetzt an "+to+" senden?"))return;btn.disabled=true;m.textContent="PDF wird erstellt …";
   try{const pdf=await makePdf(ed.d,ed.kind);m.textContent="Wird gesendet …";

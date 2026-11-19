@@ -114,3 +114,9 @@ Ohne Bauen geht es auch: `app.html` in Chrome öffnen → Menü → „App insta
 2. Es werden dieselben Secrets wie bei den anderen Functions benutzt (`SMTP_USER`, `SMTP_PASS`, …). Nichts Neues nötig.
 3. `supabase/buchhaltung.sql` erneut im SQL-Editor ausführen (ist gefahrlos wiederholbar, ergänzt die Versand-Felder).
 4. Der E-Mail-Text lässt sich unter Buchhaltung → Einstellungen anpassen.
+
+## Wichtig – Links in Einladungs- und Passwort-Mails führen auf localhost?
+Das liegt an zwei Einstellungen. Beide setzen:
+1. **Supabase → Authentication → URL Configuration:** **Site URL** = deine echte Website (z. B. `https://deine-domain.de`, NICHT `http://localhost:3000`). Unter **Redirect URLs** zusätzlich `https://deine-domain.de/admin.html` eintragen. Ist die Adresse dort nicht erlaubt, nimmt Supabase die Site URL als Ersatz.
+2. **`config.js`:** bei `SITE_URL` deine echte Website-Adresse eintragen (ohne Schrägstrich am Ende). Einladungen und „Passwort vergessen?“ benutzen dann immer diese Adresse, auch wenn du die Seite gerade lokal geöffnet hast.
+Alte, bereits verschickte Links bleiben kaputt – bitte neu einladen bzw. „Passwort vergessen?“ erneut nutzen.

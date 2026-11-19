@@ -85,7 +85,8 @@
   if(error){err.textContent=await fnError(error,"manage-team");return;}$("#member-dialog").close();await loadTeam();});
  $("#member-cancel").addEventListener("click",()=>$("#member-dialog").close());
  $("#invite-form").addEventListener("submit",async e=>{e.preventDefault();const form=e.currentTarget,f=form.elements,msg=$("#invite-message"),btn=$("#invite-send");msg.className="";msg.textContent="Einladung wird gesendet …";btn.disabled=true;
-  const body={action:"invite",first_name:f.first_name.value,last_name:f.last_name.value,email:f.email.value,phone:f.phone.value,job_title:getJob("inv"),redirect_to:location.origin+location.pathname};
+  const siteBase=window.UNITOPIA_SITE_BASE();if(!siteBase){msg.className="admin-error";msg.textContent="Bitte in config.js bei SITE_URL die echte Website-Adresse eintragen (oder admin.html über die echte Domain öffnen), sonst führt der Link auf localhost.";btn.disabled=false;return;}
+  const body={action:"invite",first_name:f.first_name.value,last_name:f.last_name.value,email:f.email.value,phone:f.phone.value,job_title:getJob("inv"),redirect_to:siteBase+"/admin.html"};
   const {error}=await sb.functions.invoke("manage-team",{body});btn.disabled=false;
   if(error){msg.className="admin-error";msg.textContent=await fnError(error,"manage-team");return;}
   msg.className="admin-ok";msg.textContent="✓ Einladung an "+body.email+" wurde gesendet. Über den Link in der E-Mail legt die Person ihr Passwort fest.";form.reset();$("#inv-job").onchange();await loadTeam();});
