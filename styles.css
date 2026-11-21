@@ -131,3 +131,132 @@ h2 span{background:var(--grad);-webkit-background-clip:text;background-clip:text
 
 .media.has-img{aspect-ratio:16/9;padding:0;overflow:hidden}.media.has-img img{width:100%;height:100%;object-fit:cover;display:block}.ki-badge{position:absolute;left:10px;bottom:10px;background:#000c;color:#fff;font-size:.7rem;letter-spacing:.04em;padding:3px 9px;border-radius:99px;border:1px solid #ffffff40}
 .social-list{display:grid;gap:12px;margin-top:22px}.social-card{display:flex;align-items:center;gap:16px;padding:18px 20px;background:var(--bg2);border:1px solid var(--line);border-radius:16px;color:inherit;text-decoration:none;transition:.2s}.social-card:hover{border-color:var(--ac);transform:translateY(-2px)}.social-card span{display:flex;flex-direction:column;flex:1}.social-card b{font-size:1.1rem}.social-card small{color:var(--muted)}.social-card i{font-style:normal;width:44px;height:44px;border:1px solid var(--line);border-radius:50%;display:grid;place-items:center;color:var(--ac)}
+
+
+/* Kontakt: eigenständige Markenoptik für WhatsApp und Instagram */
+.social-card-whatsapp{
+  background:#075e54;
+  border-color:#25D366;
+  color:#fff;
+}
+.social-card-whatsapp svg{stroke:#25D366}
+.social-card-whatsapp small{color:#e1fff0}
+.social-card-whatsapp i{color:#25D366;border-color:#25D36655}
+.social-card-whatsapp:hover{background:#08796b;border-color:#25D366}
+.social-card-whatsapp:hover i{background:#25D366;color:#063d35}
+
+.social-card-instagram{
+  background:linear-gradient(115deg,#5830a0 0%,#a52b78 52%,#d94b45 100%);
+  border-color:#c13584;
+  color:#fff;
+}
+.social-card-instagram svg{stroke:#fff}
+.social-card-instagram small{color:#fff0f6}
+.social-card-instagram i{color:#fff;border-color:#ffffff66}
+.social-card-instagram:hover{
+  background:linear-gradient(115deg,#6d3dbb 0%,#bd368b 52%,#f06450 100%);
+  border-color:#f77737;
+}
+.social-card-instagram:hover i{background:#fff;color:#a52b78;border-color:#fff}
+
+
+/* Ausgewählte Widget-Variante: unten rechts – Neon-Glas-Pills */
+.social-list{gap:20px}
+.social-card{
+  min-height:112px;
+  position:relative;
+  isolation:isolate;
+  overflow:visible;
+  border-radius:999px;
+  padding:20px 78px 20px 116px;
+  margin-left:24px;
+  box-shadow:0 0 18px #0008,inset 0 0 18px #ffffff0b;
+}
+.social-card::before{
+  content:"";
+  position:absolute;
+  inset:-2px;
+  z-index:-1;
+  border-radius:inherit;
+  opacity:.95;
+  pointer-events:none;
+}
+.social-card>svg{
+  position:absolute;
+  z-index:2;
+  left:-24px;
+  top:50%;
+  transform:translateY(-50%);
+  width:112px;
+  height:112px;
+  padding:22px;
+  border-radius:38%;
+  box-shadow:0 8px 24px #0008,inset 0 2px 5px #ffffff80;
+}
+.social-copy{display:flex;flex-direction:column;flex:1;min-width:0;gap:2px}
+.social-card b{font-size:1.25rem;line-height:1.2}
+.social-card small{font-size:1rem;line-height:1.35}
+.social-card i{
+  position:absolute;
+  right:20px;
+  top:50%;
+  transform:translateY(-50%);
+  width:52px;
+  height:52px;
+  border-radius:50%;
+  display:grid;
+  place-items:center;
+  font-size:1.65rem;
+  font-style:normal;
+  font-weight:500;
+  background:#061a1a99;
+  transition:background .2s,transform .2s;
+}
+.social-card:hover{transform:translateY(-3px) scale(1.005)}
+.social-card:hover i{transform:translateY(-50%) scale(1.08)}
+
+.social-card-whatsapp{
+  background:linear-gradient(110deg,#031d18 0%,#04251e 52%,#031a17 100%);
+  border:1px solid #0aff76;
+  color:#f4fff8;
+  box-shadow:0 0 8px #00ff6a99,0 0 24px #00e85b55,inset 0 0 20px #00ff6a12;
+}
+.social-card-whatsapp::before{
+  border:2px solid #00f56a;
+  box-shadow:0 0 12px #00ff75,0 0 28px #00e85b88;
+}
+.social-card-whatsapp>svg{
+  background:linear-gradient(145deg,#35ff83,#00bd4a 72%,#008b39);
+  border:2px solid #8affb3;
+  stroke:#fff;
+  filter:drop-shadow(0 0 12px #00ff77aa);
+}
+.social-card-whatsapp i{color:#00ff80;border:2px solid #00ed70}
+.social-card-whatsapp:hover{background:linear-gradient(110deg,#052b20,#063b28 60%,#03231d)}
+
+.social-card-instagram{
+  background:linear-gradient(110deg,#16051e 0%,#26052c 50%,#100725 100%);
+  border:1px solid #ff35cf;
+  color:#fff;
+  box-shadow:0 0 9px #ff39c999,0 0 25px #a000ff66,inset 0 0 22px #e600ff18;
+}
+.social-card-instagram::before{
+  border:2px solid #f42bdb;
+  box-shadow:0 0 12px #ff39d9,0 0 30px #8e27ff99;
+}
+.social-card-instagram>svg{
+  background:linear-gradient(145deg,#ffb33d 0%,#ff315f 35%,#d900a8 68%,#6427ed 100%);
+  border:2px solid #ffb4df;
+  stroke:#fff;
+  filter:drop-shadow(0 0 13px #ff32bb99);
+}
+.social-card-instagram i{color:#fff;border:2px solid #e72cff}
+.social-card-instagram:hover{background:linear-gradient(110deg,#25072d,#3a073d 55%,#190a38)}
+
+@media(max-width:520px){
+  .social-card{min-height:88px;padding:14px 58px 14px 82px;margin-left:18px}
+  .social-card>svg{width:82px;height:82px;left:-18px;padding:17px}
+  .social-card b{font-size:1.05rem}
+  .social-card small{font-size:.82rem}
+  .social-card i{right:12px;width:40px;height:40px;font-size:1.3rem}
+}
