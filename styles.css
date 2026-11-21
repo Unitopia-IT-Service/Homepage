@@ -260,3 +260,132 @@ h2 span{background:var(--grad);-webkit-background-clip:text;background-clip:text
   .social-card small{font-size:.82rem}
   .social-card i{right:12px;width:40px;height:40px;font-size:1.3rem}
 }
+
+
+/* Kontakt-Widgets: kompakte Karten wie im Referenzbild */
+.social-list{
+  gap:16px;
+}
+.social-card{
+  min-height:112px;
+  box-sizing:border-box;
+  border-radius:16px;
+  padding:20px 24px 20px 30px;
+  margin-left:0;
+  overflow:hidden;
+  display:flex;
+  align-items:center;
+  gap:24px;
+  box-shadow:0 8px 24px #0002;
+  transition:transform .2s ease, border-color .2s ease, box-shadow .2s ease, background .2s ease;
+}
+.social-card::before{
+  content:none;
+}
+.social-card>svg{
+  position:static;
+  flex:0 0 34px;
+  width:34px;
+  height:34px;
+  padding:0;
+  border:0;
+  border-radius:0;
+  background:transparent;
+  box-shadow:none;
+  filter:none;
+  transform:none;
+}
+.social-copy{
+  display:flex;
+  flex:1;
+  flex-direction:column;
+  min-width:0;
+  gap:3px;
+}
+.social-card b{
+  font-size:1.2rem;
+  line-height:1.25;
+  font-weight:750;
+}
+.social-card small{
+  font-size:.96rem;
+  line-height:1.35;
+}
+.social-card i{
+  position:static;
+  flex:0 0 52px;
+  width:52px;
+  height:52px;
+  border-radius:50%;
+  display:grid;
+  place-items:center;
+  font-size:1.45rem;
+  font-style:normal;
+  font-weight:500;
+  background:transparent;
+  transform:none;
+}
+.social-card:hover{
+  transform:translateY(-2px);
+}
+.social-card:hover i{
+  transform:translate(2px,-2px);
+}
+.social-card-whatsapp{
+  background:#061b18;
+  border:1px solid #16483c;
+  color:#f4fff8;
+  box-shadow:0 5px 18px #00d86b12;
+}
+.social-card-whatsapp>svg{
+  stroke:#25d366;
+}
+.social-card-whatsapp i{
+  color:#25d366;
+  border:1px solid #25d36666;
+}
+.social-card-whatsapp:hover{
+  background:#08231d;
+  border-color:#25d36688;
+  box-shadow:0 8px 22px #00d86b20;
+}
+.social-card-instagram{
+  background:#100d19;
+  border:1px solid #57305b;
+  color:#fff;
+  box-shadow:0 5px 18px #d6297612;
+}
+.social-card-instagram>svg{
+  stroke:#e4409b;
+}
+.social-card-instagram i{
+  color:#e4409b;
+  border:1px solid #e4409b77;
+}
+.social-card-instagram:hover{
+  background:#171020;
+  border-color:#c1358488;
+  box-shadow:0 8px 22px #d6297620;
+}
+@media(max-width:520px){
+  .social-list{gap:12px}
+  .social-card{
+    min-height:88px;
+    padding:14px 14px 14px 18px;
+    gap:14px;
+    border-radius:14px;
+  }
+  .social-card>svg{
+    flex-basis:30px;
+    width:30px;
+    height:30px;
+  }
+  .social-card b{font-size:1.05rem}
+  .social-card small{font-size:.84rem}
+  .social-card i{
+    flex-basis:40px;
+    width:40px;
+    height:40px;
+    font-size:1.2rem;
+  }
+}
