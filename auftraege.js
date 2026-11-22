@@ -28,7 +28,7 @@
 
  /* ---------- Aufträge ---------- */
  async function load(){
-  const {data,error}=await sb.from("inquiries").select("id,full_name,email,phone,customer_type,device_type,device_count,preferred_date,location,services,message,status,created_at").order("created_at",{ascending:false});
+  const {data,error}=await sb.from("inquiries").select("*").order("created_at",{ascending:false});
   if(error){$("#app-error").textContent="Aufträge konnten nicht geladen werden.";return;}$("#app-error").textContent="";requests=data||[];detectNew();render();
  }
  function detectNew(){const ids=new Set(requests.map(r=>r.id));
@@ -39,8 +39,8 @@
  async function loadNotes(){const {data,error}=await sb.from("inquiry_notes").select("id,note,created_at,author_email").eq("inquiry_id",cur.id).order("created_at",{ascending:false});$("#d-notes").innerHTML=error?"":(data||[]).map(n=>`<div class="note-item">${esc(n.note)}<small>${esc(n.author_email)} · ${fmt(n.created_at)}</small></div>`).join("");}
  $("#list").addEventListener("click",async ev=>{const c=ev.target.closest(".app-card");if(!c)return;const r=requests.find(x=>x.id===c.dataset.id);if(!r)return;cur=r;
   fresh.delete(r.id);if(!fresh.size){unseen=0;document.title=baseTitle;$("#app-info").textContent="";}render();
-  $("#d-name").textContent=r.full_name;
-  $("#d-body").innerHTML=[cell("Leistungen",(r.services||[]).join(", ")),cell("Kundenart",r.customer_type),cell("Gerät / Projekt",r.device_type),cell("Anzahl Geräte",r.device_count?String(r.device_count):""),cell("Wunschtermin",r.preferred_date?dde(r.preferred_date):""),cell("Ort / PLZ",r.location),cell("Beschreibung",r.message),cell("Telefon",r.phone),cell("E-Mail",r.email),cell("Eingegangen",fmt(r.created_at))].join("");
+  $("#d-name").textContent=r.company?r.company+" – "+r.full_name:r.full_name;
+  $("#d-body").innerHTML=[cell("Leistungen",(r.services||[]).join(", ")),cell("Kundenart",r.customer_type),...(r.company?[cell("Firma",r.company),cell("Ansprechpartner",r.contact_person)]:[]),cell("Gerät / Projekt",r.device_type),cell("Anzahl Geräte",r.device_count?String(r.device_count):""),cell("Wunschtermin",r.preferred_date?dde(r.preferred_date):""),cell("Anschrift",[r.street,r.location].filter(Boolean).join(", ")),cell("Beschreibung",r.message),cell("Telefon",r.phone),cell("E-Mail",r.email),cell("Eingegangen",fmt(r.created_at))].join("");
   $("#d-actions").innerHTML=`<a class="button button-primary" href="tel:${esc(String(r.phone||"").replace(/[^+\d]/g,""))}">Anrufen</a><a class="button button-ghost" href="mailto:${esc(r.email)}">E-Mail schreiben</a>`;
   $("#d-status").innerHTML=statuses.map(s=>`<option ${s===r.status?"selected":""}>${s}</option>`).join("");$("#d-error").textContent="";$("#d-note").value="";$("#d-notes").innerHTML="";
   $("#detail").showModal();await loadNotes();});
