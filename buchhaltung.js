@@ -35,6 +35,10 @@ async function del(id){const {error}=await sb.from("acc_records").delete().eq("i
 function nextNo(kind,prefix,yearly=true){const p=yearly?`${prefix}-${new Date().getFullYear()}-`:`${prefix}-`;
  const m=Math.max(0,...L(kind).map(r=>r.data.no).filter(n=>n&&n.startsWith(p)).map(n=>+n.slice(p.length)||0));return p+String(m+1).padStart(4,"0")}
 
+/* Bestellnummer je Auftrag/Position: BN-JJJJ-0001, fortlaufend über alle Angebote und Rechnungen */
+function nextOrderNo(){const y=new Date().getFullYear(),p=`BN-${y}-`,all=[...R.filter(r=>r.kind==="offer"||r.kind==="invoice").flatMap(r=>r.data.lines||[]),...(ed?.d?.lines||[])];
+ const m=Math.max(0,...all.map(l=>l.order).filter(n=>n&&String(n).startsWith(p)).map(n=>+String(n).slice(p.length)||0));return p+String(m+1).padStart(4,"0")}
+
 /* ---------- Berechnung ---------- */
 function calc(d){const free=S.kleinunt||d.rc,g={};let net=0;
  const ls=(d.lines||[]).map(l=>{const n=r2(num(l.qty)*num(l.price)*(1-num(l.disc)/100));const rt=free?0:num(l.vat);g[rt]=r2((g[rt]||0)+n);net=r2(net+n);return {...l,n,rt}});
@@ -98,7 +102,7 @@ function vDash(v){const y=new Date().getFullYear(),m=new Date().getMonth()+1,pad
  <h3>Letzte Zahlungseingänge</h3>${table(["Datum","Rechnung","Kunde","Betrag"],pays.slice(0,6).map(p=>`<tr><td>${dde(p[0])}</td><td>${esc(p[1])}</td><td>${esc(p[2])}</td><td class="n">${eur(p[3])}</td></tr>`))}`}
 
 function vDocs(v){const k=view,off=k==="offer",q=flt.q.toLowerCase(),f=flt.inv;
- let rows=L(k).slice().reverse().filter(r=>{const d=r.data;if(q&&!(`${d.no} ${cname(cust(d.cust))}`).toLowerCase().includes(q))return false;
+ let rows=L(k).slice().reverse().filter(r=>{const d=r.data;if(q&&!(`${d.no} ${cname(cust(d.cust))} ${(d.lines||[]).map(l=>l.order).join(" ")}`).toLowerCase().includes(q))return false;
   if(f==="arch")return d.archived;if(d.archived)return false;if(!f)return true;
   if(f==="Überfällig")return overdue(r);return d.status===f});
  const opts=off?["Entwurf","Gesendet","Angenommen","Abgelehnt"]:["Entwurf","Offen","Bezahlt","Überfällig","Storniert"];
@@ -115,7 +119,7 @@ function vCust(v){const q=flt.q.toLowerCase();v.innerHTML=`<div class="acc-h"><h
  $("#q").oninput=e=>{flt.q=e.target.value;vCust(v);$("#q").focus()}}
 
 /* ---------- Rechnung / Angebot Editor ---------- */
-const emptyLine=()=>({grp:"Arbeit",name:"",desc:"",qty:1,unit:"Stunde",price:0,disc:0,vat:S.vat??19});
+const emptyLine=()=>({grp:"Arbeit",name:"",desc:"",order:"",qty:1,unit:"Stunde",price:0,disc:0,vat:S.vat??19});
 function newDoc(kind,preset={}){const t=num(S.terms)||14,d=today();
  ed={id:null,kind,locked:false,d:{k2:"Rechnung",date:d,terms:t,due:addDays(d,t),valid:addDays(d,30),status:"Entwurf",lines:[emptyLine()],payments:[],svcDate:d,...preset}};docForm()}
 function openDoc(id){const r=byId(id);ed={id,kind:r.kind,locked:r.locked,d:structuredClone(r.data)};docForm()}
@@ -128,8 +132,8 @@ function docForm(){const {d,kind,locked}=ed,off=kind==="offer",dis=locked?"disab
  <label class="w">Zahlungsbedingungen / Hinweis<input name="note" value="${esc(d.note||"")}" placeholder="z. B. Skonto, Garantiehinweis"></label>
  ${S.kleinunt?"":`<label class="w"><span><input type="checkbox" name="rc" ${d.rc?"checked":""} style="width:auto"> Reverse-Charge (§ 13b UStG) – Steuerschuldnerschaft des Leistungsempfängers, 0 % USt</span></label>`}</div>
  <h4>Positionen</h4><datalist id="cat">${cat.map(c=>`<option value="${esc(c.data.name)}">`).join("")}</datalist>
- <div class="tw lines"><table class="t"><thead><tr><th>Art</th><th>Bezeichnung</th><th>Beschreibung</th><th>Menge</th><th>Einheit</th><th>Einzelpreis netto</th><th>Rabatt %</th><th>USt %</th><th>Netto</th><th></th></tr></thead><tbody id="ls"></tbody></table></div>
- <div class="acc-bar">${sel("","pick",[["","+ Aus Katalog …"],...cat.map((c,i)=>[c.id,(c.data.no?c.data.no+" ":"")+c.data.name])],"","","")}<button type="button" class="button button-ghost" data-act="addline">+ Leerzeile</button>${!off&&d.k2==="Schlussrechnung"?`<button type="button" class="button button-ghost" data-act="deduct">Abschlagsrechnungen abziehen</button>`:""}</div></fieldset>
+ <div class="tw lines"><table class="t"><thead><tr><th>Art</th><th>Bezeichnung</th><th>Beschreibung</th><th>Bestellnr.</th><th>Menge</th><th>Einheit</th><th>Einzelpreis netto</th><th>Rabatt %</th><th>USt %</th><th>Netto</th><th></th></tr></thead><tbody id="ls"></tbody></table></div>
+ <div class="acc-bar">${sel("","pick",[["","+ Aus Katalog …"],...cat.map((c,i)=>[c.id,(c.data.no?c.data.no+" ":"")+c.data.name])],"","","")}<button type="button" class="button button-ghost" data-act="addline">+ Leerzeile</button><button type="button" class="button button-ghost" data-act="ordall" title="Vergibt für jede Position ohne Bestellnummer eine eigene Nummer">Bestellnummern für alle Positionen</button>${!off&&d.k2==="Schlussrechnung"?`<button type="button" class="button button-ghost" data-act="deduct">Abschlagsrechnungen abziehen</button>`:""}</div></fieldset>
  <div class="tot" id="tot"></div>
  ${fin&&!off?payBlock():""}
  <div class="acc-bar" style="margin-top:14px">${!fin?`<button class="button button-ghost" type="submit">Entwurf speichern</button><button class="button button-primary" type="button" data-act="final">${off?"Nummer vergeben & speichern":"Festschreiben & Nummer vergeben"}</button>`:""}
@@ -142,7 +146,7 @@ function docForm(){const {d,kind,locked}=ed,off=kind==="offer",dis=locked?"disab
   collect();if(t.name==="date"||t.name==="terms"){ed.d.due=addDays(ed.d.date,num(ed.d.terms));const x=$("#f [name=due]");if(x)x.value=ed.d.due}if(t.name==="rc"){docForm();return}totals()}}
 function payBlock(){const d=ed.d,c=calc(d),p=paid(d);return `<h4>Zahlungen</h4>${table(["Datum","Betrag","Notiz"],(d.payments||[]).map(x=>`<tr><td>${dde(x.date)}</td><td class="n">${eur(x.amount)}</td><td>${esc(x.note)}</td></tr>`))}<p class="hint">Bezahlt ${eur(p)} von ${eur(c.gross)} · offen ${eur(r2(c.gross-p))}</p><div class="acc-bar"><input id="pa" type="number" step="0.01" value="${r2(c.gross-p)}" style="width:110px"><input id="pd" type="date" value="${today()}"><input id="pn" placeholder="Notiz" style="width:160px"><button type="button" class="button button-ghost" data-act="pay">Zahlung buchen</button></div>`}
 function lines(){$("#ls").innerHTML=ed.d.lines.map((l,i)=>{const free=S.kleinunt||ed.d.rc,f=(k,t="text",a="")=>`<input data-i="${i}" data-f="${k}" type="${t}" value="${esc(l[k])}" ${a}>`,s=(k,o)=>`<select data-i="${i}" data-f="${k}">${o.map(x=>`<option ${String(x)===String(l[k])?"selected":""}>${x}</option>`).join("")}</select>`;
- return `<tr><td>${s("grp",["Arbeit","Material"])}</td><td>${f("name","text",'list="cat"')}</td><td>${f("desc")}</td><td>${f("qty","number",'step="any" style="width:70px"')}</td><td>${s("unit",["Stück","Stunde","Auftrag","Pauschale"])}</td><td>${f("price","number",'step="0.01" style="width:100px"')}</td><td>${f("disc","number",'step="any" style="width:60px"')}</td><td>${free?`<select disabled title="${S.kleinunt?"Kleinunternehmer § 19 UStG":"Reverse-Charge"}"><option>0</option></select>`:s("vat",[19,7,0])}</td><td class="n" id="ln${i}"></td><td>${ed.locked?"":`<button type="button" data-act="rmline" data-i="${i}" class="button button-ghost" style="padding:4px 9px">×</button>`}</td></tr>`}).join("");totals()}
+ return `<tr><td>${s("grp",["Arbeit","Material"])}</td><td>${f("name","text",'list="cat"')}</td><td>${f("desc")}</td><td style="white-space:nowrap">${f("order","text",'placeholder="BN-…" style="width:125px"')}${ed.locked?"":`<button type="button" data-act="ordno" data-i="${i}" class="button button-ghost" style="padding:4px 9px" title="Bestellnummer erzeugen">＋</button>`}</td><td>${f("qty","number",'step="any" style="width:70px"')}</td><td>${s("unit",["Stück","Stunde","Auftrag","Pauschale"])}</td><td>${f("price","number",'step="0.01" style="width:100px"')}</td><td>${f("disc","number",'step="any" style="width:60px"')}</td><td>${free?`<select disabled title="${S.kleinunt?"Kleinunternehmer § 19 UStG":"Reverse-Charge"}"><option>0</option></select>`:s("vat",[19,7,0])}</td><td class="n" id="ln${i}"></td><td>${ed.locked?"":`<button type="button" data-act="rmline" data-i="${i}" class="button button-ghost" style="padding:4px 9px">×</button>`}</td></tr>`}).join("");totals()}
 function totals(){const c=calc(ed.d);c.ls.forEach((l,i)=>{const e=$("#ln"+i);if(e)e.textContent=eur(l.n)});$("#tot").innerHTML=`${c.gr.map(g=>`Netto ${g.rt} %: ${eur(g.net)} · USt ${eur(g.vat)}<br>`).join("")}Summe netto ${eur(c.net)} · USt ${eur(c.vat)}<br><b>Brutto ${eur(c.gross)}</b>${S.kleinunt?'<br><span class="hint">Kleinunternehmer § 19 UStG – keine USt</span>':""}`}
 function collect(){if(ed.locked)return;const f=$("#f"),o=Object.fromEntries(new FormData(f));["k2","cust","date","svcDate","svcTo","terms","due","valid","note"].forEach(k=>{if(k in o)ed.d[k]=o[k]});ed.d.rc=!!o.rc;
  f.querySelectorAll("[data-i]").forEach(x=>{ed.d.lines[+x.dataset.i][x.dataset.f]=x.value})}
@@ -159,7 +163,7 @@ const sellerLine=()=>esc([S.company,S.owner&&"Inh. "+S.owner,S.street,[S.zip,S.c
 const footer=()=>`<div class="f">${sellerLine()}<br>${S.taxno?"Steuernr.: "+esc(S.taxno)+" · ":""}${S.vatid?"USt-IdNr.: "+esc(S.vatid)+" · ":""}${esc(S.email||"")} ${esc(S.phone||"")}<br>${S.iban?"Bank: "+esc(S.bank||"")+" · IBAN "+esc(S.iban)+" · BIC "+esc(S.bic||""):""}</div>`;
 const logo=()=>`<img src="${new URL("assets/logo-wortmarke.webp",location.href).href}" height="42" style="float:right" alt="">`;
 function docHTML(d,kind,qs=""){const c=calc(d),kl=S.kleinunt,cu=cust(d.cust)||{},off=kind==="offer",title=off?"Angebot":d.k2;
- const body=["Arbeit","Material"].map(g=>{const ls=c.ls.filter(l=>(l.grp||"Arbeit")===g&&(l.name||l.price));return ls.length?`<tr><td colspan="7"><b>${g==="Arbeit"?"Arbeitsleistung":"Material / Hardware"}</b></td></tr>`+ls.map((l,i)=>`<tr><td>${i+1}</td><td>${esc(l.name)}${l.desc?"<br><small>"+esc(l.desc)+"</small>":""}</td><td class="n">${num(l.qty)} ${esc(l.unit)}</td><td class="n">${eur(l.price)}</td><td class="n">${num(l.disc)?num(l.disc)+" %":""}</td><td class="n">${kl?"":l.rt+" %"}</td><td class="n">${eur(l.n)}</td></tr>`).join(""):""}).join("");
+ const body=["Arbeit","Material"].map(g=>{const ls=c.ls.filter(l=>(l.grp||"Arbeit")===g&&(l.name||l.price));return ls.length?`<tr><td colspan="7"><b>${g==="Arbeit"?"Arbeitsleistung":"Material / Hardware"}</b></td></tr>`+ls.map((l,i)=>`<tr><td>${i+1}</td><td>${esc(l.name)}${l.desc?"<br><small>"+esc(l.desc)+"</small>":""}${l.order?"<br><small><b>Bestellnr.: "+esc(l.order)+"</b></small>":""}</td><td class="n">${num(l.qty)} ${esc(l.unit)}</td><td class="n">${eur(l.price)}</td><td class="n">${num(l.disc)?num(l.disc)+" %":""}</td><td class="n">${kl?"":l.rt+" %"}</td><td class="n">${eur(l.n)}</td></tr>`).join(""):""}).join("");
  return `${logo()}<p style="font-size:10px;color:#555">${sellerLine()}</p><p>${addr(cu)}${cu.no?`<br><small>Kundennr.: ${esc(cu.no)}</small>`:""}${cu.vatid?`<br><small>USt-IdNr.: ${esc(cu.vatid)}</small>`:""}</p>
  <h2>${esc(title)} ${esc(d.no||"(Entwurf)")}</h2><p>Datum: ${dde(d.date)}${off?`<br>Gültig bis: ${dde(d.valid)}`:`<br>Leistungsdatum: ${dde(d.svcDate)}${d.svcTo?" bis "+dde(d.svcTo):""}${d.ref?`<br>Bezug: ${esc(d.ref)}`:""}`}</p>
  <table><tr><th>Pos.</th><th>Bezeichnung</th><th class="n">Menge</th><th class="n">Einzelpreis netto</th><th class="n">Rabatt</th><th class="n">${kl?"":"USt"}</th><th class="n">Netto</th></tr>${body}</table>
@@ -197,7 +201,7 @@ async function makePdf(d,k){await loadLib();const {jsPDF}=window.jspdf,doc=new j
  const room=h=>{if(y+h>262){doc.addPage();y=22;head()}};
  head();let pos=0;
  ["Arbeit","Material"].forEach(g=>{const ls=c.ls.filter(l=>(l.grp||"Arbeit")===g&&(l.name||l.price));if(!ls.length)return;room(14);T(g==="Arbeit"?"Arbeitsleistung":"Material / Hardware",X,y,{},9.5,true);y+=5.5;
-  ls.forEach(l=>{const nm=wrap(l.name,70,9.5),ds=l.desc?wrap(l.desc,70,8):[],h=nm.length*4.4+ds.length*3.6+3;room(h);pos++;
+  ls.forEach(l=>{const nm=wrap(l.name,70,9.5),ds=[...(l.desc?wrap(l.desc,70,8):[]),...(l.order?["Bestellnr.: "+l.order]:[])],h=nm.length*4.4+ds.length*3.6+3;room(h);pos++;
    T(pos,X,y,{},9.5);T(nm,X+9,y,{},9.5);if(ds.length)T(ds,X+9,y+nm.length*4.4-0.4,{},8,false,[90,90,90]);
    T(num(l.qty)+" "+l.unit,col.q,y,{align:"right"},9.5);T(m(l.price),col.p,y,{align:"right"},9.5);if(num(l.disc))T(num(l.disc)+" %",col.r,y,{align:"right"},9.5);if(!kl)T(l.rt+" %",col.v,y,{align:"right"},9.5);T(m(l.n),col.n,y,{align:"right"},9.5);
    y+=h;doc.setDrawColor(215);doc.setLineWidth(.2);doc.line(X,y-2.6,XR,y-2.6)})});
@@ -245,12 +249,14 @@ const acts={
  marksent:()=>patch(ed.kind==="offer"?{status:"Gesendet"}:{sent:true}),
  back:()=>docForm(),
  addline:()=>{collect();ed.d.lines.push(emptyLine());docForm()},
+ ordno:e=>{collect();const l=ed.d.lines[+e.dataset.i];if(l&&!l.order)l.order=nextOrderNo();docForm()},
+ ordall:()=>{collect();ed.d.lines.forEach(l=>{if((l.name||num(l.price))&&!l.order)l.order=nextOrderNo()});docForm()},
  rmline:e=>{collect();ed.d.lines.splice(+e.dataset.i,1);if(!ed.d.lines.length)ed.d.lines.push(emptyLine());docForm()},
  pay:async()=>{const a=num($("#pa").value);if(!a)return;const d=ed.d;await patch({payments:[...(d.payments||[]),{amount:a,date:$("#pd").value||today(),note:$("#pn").value}],status:r2(paid(d)+a)>=calc(d).gross-0.005?"Bezahlt":"Offen"})},
  arch:()=>patch({archived:!ed.d.archived}),
  deldoc:async()=>{if(ed.id&&confirm("Entwurf löschen?")&&await del(ed.id)){dlg.close();render()}},
  storno:()=>stornoOrKorr(true),korr:()=>stornoOrKorr(false),
- copy:()=>{const d={...ed.d,no:null,status:"Entwurf",date:today(),valid:addDays(today(),30),archived:false};ed={id:null,kind:"offer",locked:false,d};docForm()},
+ copy:()=>{const d={...ed.d,no:null,status:"Entwurf",date:today(),valid:addDays(today(),30),archived:false,lines:ed.d.lines.map(l=>({...l,order:""}))};ed={id:null,kind:"offer",locked:false,d};docForm()},
  toinv:async()=>{const d=ed.d;if(d.status!=="Angenommen"&&!confirm("Angebot ist noch nicht als angenommen markiert. Trotzdem Rechnung erstellen?"))return;await patch({invoiced:true,status:"Angenommen"});
   const t=num(S.terms)||14;ed={id:null,kind:"invoice",locked:false,d:{k2:"Rechnung",cust:d.cust,date:today(),terms:t,due:addDays(today(),t),svcDate:today(),status:"Entwurf",lines:structuredClone(d.lines),payments:[],ref:d.no,rc:d.rc}};view="invoice";render();docForm()},
  deduct:()=>{collect();const used=new Set(L("invoice").flatMap(r=>r.data.deducted||[]));const ab=L("invoice").filter(r=>isFinal(r)&&r.data.k2==="Abschlagsrechnung"&&r.data.cust===ed.d.cust&&!used.has(r.id));if(!ab.length){alert("Keine offenen Abschlagsrechnungen dieses Kunden.");return}

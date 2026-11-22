@@ -55,9 +55,11 @@
   if(error){$("#status-error").textContent=await fnError(error,"manage-inquiry");return;}
   $("#status-dialog").close();statusTarget=null;await loadRequests();flashMail(data);});
  function flashMail(d){const ok=$("#dashboard-info"),er=$("#dashboard-error");ok.textContent="";if(!d)return;
-  if(d.mail==="sent")ok.textContent="✓ Status gespeichert. Die Bestätigungs-E-Mail an "+d.to+" wurde gesendet.";
-  else if(d.mail==="failed")er.textContent="Status gespeichert, aber die E-Mail an "+d.to+" konnte nicht gesendet werden. "+(d.mail_error||"");
-  else ok.textContent="✓ Status gespeichert.";}
+  const a=d.acc,accTxt=a&&a.status==="created"?" Buchhaltung: Kunde "+a.customer_no+(a.customer_new?" neu angelegt":" (war schon vorhanden)")+", Angebot als Entwurf gespeichert.":"",accErr=a&&a.status==="failed"?" Buchhaltung konnte nicht angelegt werden: "+a.error:"";
+  if(d.mail==="sent")ok.textContent="✓ Status gespeichert. Die Bestätigungs-E-Mail an "+d.to+" wurde gesendet."+accTxt;
+  else if(d.mail==="failed")er.textContent="Status gespeichert, aber die E-Mail an "+d.to+" konnte nicht gesendet werden. "+(d.mail_error||"")+accTxt;
+  else ok.textContent="✓ Status gespeichert."+accTxt;
+  if(accErr)er.textContent=(er.textContent?er.textContent+" ":"")+accErr.trim();}
  $("#status-cancel").addEventListener("click",()=>$("#status-dialog").close());$("#close-status").addEventListener("click",()=>$("#status-dialog").close());
  async function deleteRequest(r){if(!confirm("Anfrage von „"+r.full_name+"“ endgültig löschen?\nDie Anfrage und alle internen Notizen werden unwiderruflich entfernt."))return;
   const {error}=await sb.functions.invoke("manage-inquiry",{body:{action:"delete",inquiry_id:r.id}});
