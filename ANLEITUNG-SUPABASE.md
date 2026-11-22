@@ -112,7 +112,7 @@ Ohne Bauen geht es auch: `app.html` in Chrome öffnen → Menü → „App insta
 ## Zusatz – Rechnungen & Angebote per E-Mail senden (Buchhaltung)
 1. **Edge Functions → Deploy a new function** → Name `send-document` → Inhalt von `supabase/functions/send-document/index.ts` einfügen → **Verify JWT = AUS** → Deploy.
 2. Es werden dieselben Secrets wie bei den anderen Functions benutzt (`SMTP_USER`, `SMTP_PASS`, …). Nichts Neues nötig.
-3. `supabase/buchhaltung.sql` erneut im SQL-Editor ausführen (ist gefahrlos wiederholbar, ergänzt die Versand-Felder und die Sperre gegen das Löschen von Kunden mit Rechnungen).
+3. `supabase/buchhaltung.sql` erneut im SQL-Editor ausführen (ist gefahrlos wiederholbar, ergänzt die Versand-Felder).
 4. Der E-Mail-Text lässt sich unter Buchhaltung → Einstellungen anpassen.
 
 ## Wichtig – Links in Einladungs- und Passwort-Mails führen auf localhost?
@@ -125,3 +125,16 @@ Alte, bereits verschickte Links bleiben kaputt – bitte neu einladen bzw. „Pa
 - Der Link ist nur einmal und nur begrenzt gültig (Standard 1 Stunde: **Authentication → Sign In / Providers → Email → Email OTP Expiration**, dort bis 86400 s einstellbar). Mail-Programme/Virenscanner (auch GMX) öffnen Links manchmal vorab und „verbrauchen“ sie.
 - Die Vorlagen **Invite user** und **Reset password** müssen die Variante mit `{{ .RedirectTo }}?invite={{ .TokenHash }}&type=…` enthalten (Schritt 5), NICHT `{{ .ConfirmationURL }}`. Nur dann wird der Link erst beim Klick auf „Passwort speichern“ verbraucht.
 - Danach neuen Link anfordern („Passwort vergessen?“ auf der Login-Seite) – alte Links funktionieren nicht mehr.
+
+## Zusatz – Automatisches Mahnwesen
+1. Edge Function **`dunning-run`** anlegen (Inhalt `supabase/functions/dunning-run/index.ts`), **Verify JWT = AUS**.
+2. Unter Edge Functions → Secrets ein Geheimwort **`CRON_SECRET`** anlegen.
+3. `supabase/mahnwesen-zeitplan.sql` ausführen (vorher pg_cron und pg_net aktivieren, Geheimwort eintragen).
+4. In der Buchhaltung unter Einstellungen „Automatische Zahlungserinnerung“ auf Ja stellen.
+Nur die Zahlungserinnerung geht automatisch raus. Mahnungen gibst du selbst frei (Mahnwesen → Knopf in der Zeile).
+
+## Zusatz – PayPal-Zahlungslink auf Rechnungen
+1. PayPal-Geschäftskonto anlegen und unter paypal.com/paypalme deinen **PayPal.Me-Link** einrichten (z. B. paypal.me/unitopia).
+2. In der Buchhaltung unter Einstellungen den Namen nach `paypal.me/` bei **PayPal.Me-Name** eintragen.
+3. Ab dann steht auf Rechnungen, Rechnungs-E-Mails, Mahnungen und automatischen Erinnerungen ein Link mit dem offenen Betrag. Die Zahlung musst du in der Software selbst als „Zahlung buchen“ erfassen (PayPal meldet sich per E-Mail).
+4. Die Function `dunning-run` danach neu deployen (sie nimmt den Link in die Erinnerung auf).
