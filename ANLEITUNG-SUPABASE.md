@@ -87,7 +87,7 @@ Tipp: Das eingebaute Supabase-Mailsystem erlaubt nur wenige Mails pro Stunde. Be
 
 ## Schritt 11 – Testen
 1. Anfrage über das Formular auf der Website senden → sie erscheint in `admin.html` und eine Mail kommt bei GMX an.
-2. In `admin.html` anmelden → Status „Angenommen“ setzen → der Kunde bekommt einmalig die Bestätigungsmail.
+2. In `admin.html` anmelden → Status „In Bearbeitung“ setzen → der Kunde bekommt einmalig die Bestätigungsmail (bei „Abgelehnt“ einmalig die Ablehnungsmail).
 3. `app.html` auf dem Handy öffnen → anmelden → **Benachrichtigung aktivieren** → **Test senden**.
    - Android/Chrome: Menü → „App installieren“.
    - iPhone: Teilen → „Zum Home-Bildschirm“, dann die App von dort öffnen (nötig für Push).
@@ -138,3 +138,18 @@ Nur die Zahlungserinnerung geht automatisch raus. Mahnungen gibst du selbst frei
 2. In der Buchhaltung unter Einstellungen den Namen nach `paypal.me/` bei **PayPal.Me-Name** eintragen.
 3. Ab dann steht auf Rechnungen, Rechnungs-E-Mails, Mahnungen und automatischen Erinnerungen ein Link mit dem offenen Betrag. Die Zahlung musst du in der Software selbst als „Zahlung buchen“ erfassen (PayPal meldet sich per E-Mail).
 4. Die Function `dunning-run` danach neu deployen (sie nimmt den Link in die Erinnerung auf).
+
+## Update: neue Status, Ablehnung mit Grund, Protokolle bearbeiten
+Reihenfolge beim Einspielen:
+1. `supabase/status-update.sql` im SQL-Editor ausführen (neue Spalten, „Angenommen“ wird zu „In Bearbeitung“).
+2. `supabase/annahme.sql` erneut ausführen (erlaubt das Bearbeiten von Protokollen; die Unterschrift bleibt per Datenbank-Regel gesperrt).
+3. Edge Function **`manage-inquiry`** mit dem Inhalt von `supabase/functions/manage-inquiry/index.ts` neu bereitstellen (Verify JWT = AUS).
+4. Website-Dateien hochladen und im Browser einmal neu laden (Strg + F5).
+
+Status: **Neu → In Bearbeitung → Abgeschlossen / Abgelehnt.**
+- „In Bearbeitung“: Bestätigungs-E-Mail (einmalig) + Kunde und Angebots-Entwurf in der Buchhaltung.
+- „Abgelehnt“: Ablehnungs-E-Mail (einmalig), optional mit Grund.
+- „Abgeschlossen“: wird nach 5 Tagen automatisch gelöscht.
+Alle Kunden-E-Mails (Bestätigung, Ablehnung, Angebot, Rechnung) enden mit derselben Fußzeile.
+
+Protokolle: am Computer nur noch in der Buchhaltung über den Reiter „Protokolle“, am Handy in der App unter „Buchhaltung“ → „Protokolle“.

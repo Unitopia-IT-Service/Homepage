@@ -3,7 +3,7 @@
  if(!window.supabase||!cfg.SUPABASE_URL||cfg.SUPABASE_URL.includes("DEIN-PROJEKT")){$("#login-error").textContent="Supabase ist noch nicht konfiguriert.";return;}
  const sb=window.supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_ANON_KEY);
  let currentUser=null,requests=[],selected=null,statusTarget=null,team=[],editingMember=null;
- const statuses=["Neu","Angenommen","In Bearbeitung","Abgeschlossen","Abgelehnt"];
+ const statuses=["Neu","In Bearbeitung","Abgeschlossen","Abgelehnt"];
  const JOBS=["Inhaber","Mitarbeiter","Techniker","Webentwickler","Support"];
  const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
  const fmt=s=>s?new Date(s).toLocaleString("de-DE"):"—";
@@ -47,16 +47,19 @@
   if(btn.dataset.act==="status")openStatus(r);else deleteRequest(r);});
  function detailCell(l,v){return `<div class="detail-cell"><small>${l}</small><p>${esc(v||"—")}</p></div>`;}
  async function openRequest(id){selected=requests.find(r=>r.id===id);if(!selected)return;fresh.delete(id);if(!fresh.size){unseen=0;document.title=baseTitle;}render();$("#detail-name").textContent=selected.company?selected.company+" – "+selected.full_name:selected.full_name;
-  $("#detail-body").innerHTML=[detailCell("Status",selected.status),detailCell("Kontakt",selected.email+" · "+selected.phone),detailCell("Kundenart",selected.customer_type),...(selected.company?[detailCell("Firma",selected.company),detailCell("Ansprechpartner",selected.contact_person)]:[]),detailCell("Gerät / Projekt",selected.device_type),detailCell("Anzahl Geräte",selected.device_count?String(selected.device_count):""),detailCell("Wunschtermin",selected.preferred_date?dde(selected.preferred_date):""),detailCell("Anschrift",[selected.street,selected.location].filter(Boolean).join(", ")),detailCell("Leistungen",(selected.services||[]).join(", ")),detailCell("Nachricht",selected.message),detailCell("Eingegangen",fmt(selected.created_at)),detailCell("E-Mail an Team",mailLabel(selected.notify_mail)),detailCell("Bestätigung an Kunde",mailLabel(selected.confirm_mail)+(selected.mail_error?" – "+selected.mail_error:""))].join("");
+  $("#detail-body").innerHTML=[detailCell("Status",selected.status),detailCell("Kontakt",selected.email+" · "+selected.phone),detailCell("Kundenart",selected.customer_type),...(selected.company?[detailCell("Firma",selected.company),detailCell("Ansprechpartner",selected.contact_person)]:[]),detailCell("Gerät / Projekt",selected.device_type),detailCell("Anzahl Geräte",selected.device_count?String(selected.device_count):""),detailCell("Wunschtermin",selected.preferred_date?dde(selected.preferred_date):""),detailCell("Anschrift",[selected.street,selected.location].filter(Boolean).join(", ")),detailCell("Leistungen",(selected.services||[]).join(", ")),detailCell("Nachricht",selected.message),detailCell("Eingegangen",fmt(selected.created_at)),detailCell("E-Mail an Team",mailLabel(selected.notify_mail)),detailCell("Bestätigung an Kunde",mailLabel(selected.confirm_mail)+(selected.mail_error?" – "+selected.mail_error:"")),...(selected.status==="Abgelehnt"||selected.reject_reason?[detailCell("Ablehnungsgrund",selected.reject_reason),detailCell("Ablehnungs-E-Mail an Kunde",mailLabel(selected.reject_mail))]:[])].join("");
   $("#internal-note").value="";await loadNotes();$("#request-dialog").showModal();}
- function openStatus(r){statusTarget=r;$("#status-name").textContent=r.full_name;$("#status-current").textContent="Aktueller Status: "+r.status;$("#status-select").innerHTML=statuses.map(s=>`<option ${s===r.status?"selected":""}>${s}</option>`).join("");$("#status-error").textContent="";$("#status-dialog").showModal();}
+ function openStatus(r){statusTarget=r;$("#status-name").textContent=r.full_name;$("#status-current").textContent="Aktueller Status: "+r.status;$("#status-select").innerHTML=statuses.map(s=>`<option ${s===r.status?"selected":""}>${s}</option>`).join("");$("#status-error").textContent="";$("#status-reason").value=r.reject_reason||"";syncReason();$("#status-dialog").showModal();}
+ function syncReason(){const on=$("#status-select").value==="Abgelehnt";$("#status-reason-wrap").hidden=!on;$("#status-reason-hint").hidden=!on;}
+ $("#status-select").addEventListener("change",syncReason);
  $("#status-save").addEventListener("click",async()=>{if(!statusTarget)return;const btn=$("#status-save"),status=$("#status-select").value;btn.disabled=true;
-  const {data,error}=await sb.functions.invoke("manage-inquiry",{body:{action:"status",inquiry_id:statusTarget.id,status}});btn.disabled=false;
+  const {data,error}=await sb.functions.invoke("manage-inquiry",{body:{action:"status",inquiry_id:statusTarget.id,status,reason:status==="Abgelehnt"?$("#status-reason").value.trim():""}});btn.disabled=false;
   if(error){$("#status-error").textContent=await fnError(error,"manage-inquiry");return;}
   $("#status-dialog").close();statusTarget=null;await loadRequests();flashMail(data);});
  function flashMail(d){const ok=$("#dashboard-info"),er=$("#dashboard-error");ok.textContent="";if(!d)return;
   const a=d.acc,accTxt=a&&a.status==="created"?" Buchhaltung: Kunde "+a.customer_no+(a.customer_new?" neu angelegt":" (war schon vorhanden)")+", Angebot als Entwurf gespeichert.":"",accErr=a&&a.status==="failed"?" Buchhaltung konnte nicht angelegt werden: "+a.error:"";
-  if(d.mail==="sent")ok.textContent="✓ Status gespeichert. Die Bestätigungs-E-Mail an "+d.to+" wurde gesendet."+accTxt;
+  const mk=d.mail_kind==="reject"?"Ablehnungs-E-Mail":"Bestätigungs-E-Mail";
+  if(d.mail==="sent")ok.textContent="✓ Status gespeichert. Die "+mk+" an "+d.to+" wurde gesendet."+accTxt;
   else if(d.mail==="failed")er.textContent="Status gespeichert, aber die E-Mail an "+d.to+" konnte nicht gesendet werden. "+(d.mail_error||"")+accTxt;
   else ok.textContent="✓ Status gespeichert."+accTxt;
   if(accErr)er.textContent=(er.textContent?er.textContent+" ":"")+accErr.trim();}

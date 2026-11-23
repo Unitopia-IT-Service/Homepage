@@ -12,15 +12,19 @@ window.addEventListener("load",()=>{if(!window.supabase)return;sb=window.supabas
  sb.auth.onAuthStateChange((_e,s)=>{if(s)check(s.user);else teardown()});sb.auth.getSession().then(({data:{session}})=>session&&check(session.user))});
 function teardown(){$("#acc-tabs")?.remove();$("#tab-buchhaltung")?.remove();built=false;const a=$("#tab-auftraege");if(a)a.hidden=false}
 async function check(user){if(built)return;const {data:p}=await sb.from("profiles").select("role,active").eq("id",user.id).maybeSingle();
- if(!p||!p.active||p.role!=="admin")return;build()}
+ if(!p||!p.active)return;if(p.role==="admin")build();else if(p.role==="employee")buildStaff()}
+// Mitarbeiter ohne Buchhaltungszugang: nur die Protokolle (früher im Reiter „Aufträge“)
+function buildStaff(){if(built||!$("#tab-auftraege"))return;built=true;
+ const nav=document.createElement("nav");nav.id="acc-tabs";nav.style.cssText="display:flex;gap:8px;margin:6px 0 14px";
+ nav.innerHTML=`<a class="button button-ghost" href="annahme.html">📋 Protokolle</a>`;$("#tab-auftraege").before(nav)}
 function build(){if(built||!$("#tab-auftraege"))return;built=true;
  const nav=document.createElement("nav");nav.id="acc-tabs";nav.style.cssText="display:flex;gap:8px;margin:6px 0 14px";
  nav.innerHTML=`<button class="button button-primary" data-t="a" type="button">Aufträge</button><button class="button button-ghost" data-t="b" type="button">Buchhaltung</button>`;
  $("#tab-auftraege").before(nav);
  const sec=document.createElement("div");sec.id="tab-buchhaltung";sec.hidden=true;
  sec.innerHTML=`<div class="section-kicker">NUR FÜR INHABER</div><h1>Buchhaltung<span>.</span></h1>
- <div class="app-tools"><a class="button button-ghost" href="buchhaltung.html">Rechnungen & Auswertung öffnen ↗</a></div>
- <h2 style="font-size:1.3rem;margin:18px 0 8px">Eingangsrechnung erfassen</h2>
+ <div class="app-tools"><a class="button button-primary" href="annahme.html">📋 Protokolle</a></div>
+ <h2 style="font-size:1.3rem;margin:18px 0 8px">Eingangsrechnung erfassen (Foto)</h2>
  <form id="bx" class="inquiry-form" style="display:grid;gap:12px">
   <div class="app-tools" style="margin:0"><label class="button button-primary" style="cursor:pointer">📷 Foto aufnehmen<input id="bx-cam" type="file" accept="image/*" capture="environment" hidden></label><label class="button button-ghost" style="cursor:pointer">📎 Datei / Galerie<input id="bx-file" type="file" accept="image/*,application/pdf" hidden></label></div>
   <p id="bx-fn" class="form-hint" style="margin:0">Noch kein Beleg ausgewählt.</p><img id="bx-prev" alt="" style="max-width:100%;max-height:220px;border-radius:12px;display:none">

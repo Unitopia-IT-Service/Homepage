@@ -6,7 +6,7 @@
  const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
  const fmt=s=>s?new Date(s).toLocaleString("de-DE",{dateStyle:"short",timeStyle:"short"}):"—";
  const dde=d=>{if(!d)return "—";const [y,m,t]=String(d).split("-");return t+"."+m+"."+y;};
- const statuses=["Neu","Angenommen","In Bearbeitung","Abgeschlossen","Abgelehnt"];
+ const statuses=["Neu","In Bearbeitung","Abgeschlossen","Abgelehnt"];
  let requests=[],knownIds=null,unseen=0,live=false,cur=null,me=null;const fresh=new Set(),baseTitle=document.title;
  async function fnError(error,fn){try{const r=error&&error.context;if(r&&typeof r.json==="function"){if(r.status===404)return "Die Funktion „"+fn+"“ ist in Supabase noch nicht bereitgestellt.";const j=await r.json();if(j&&j.error)return j.error;}}catch(_){}return "Verbindung zur Funktion „"+fn+"“ fehlgeschlagen.";}
  function askConfirm(title,text,yes="Ja, löschen"){return new Promise(res=>{const d=$("#confirm-dialog");$("#cf-title").textContent=title;$("#cf-text").textContent=text;$("#cf-yes").textContent=yes;
@@ -40,17 +40,20 @@
  $("#list").addEventListener("click",async ev=>{const c=ev.target.closest(".app-card");if(!c)return;const r=requests.find(x=>x.id===c.dataset.id);if(!r)return;cur=r;
   fresh.delete(r.id);if(!fresh.size){unseen=0;document.title=baseTitle;$("#app-info").textContent="";}render();
   $("#d-name").textContent=r.company?r.company+" – "+r.full_name:r.full_name;
-  $("#d-body").innerHTML=[cell("Leistungen",(r.services||[]).join(", ")),cell("Kundenart",r.customer_type),...(r.company?[cell("Firma",r.company),cell("Ansprechpartner",r.contact_person)]:[]),cell("Gerät / Projekt",r.device_type),cell("Anzahl Geräte",r.device_count?String(r.device_count):""),cell("Wunschtermin",r.preferred_date?dde(r.preferred_date):""),cell("Anschrift",[r.street,r.location].filter(Boolean).join(", ")),cell("Beschreibung",r.message),cell("Telefon",r.phone),cell("E-Mail",r.email),cell("Eingegangen",fmt(r.created_at))].join("");
+  $("#d-body").innerHTML=[cell("Leistungen",(r.services||[]).join(", ")),cell("Kundenart",r.customer_type),...(r.company?[cell("Firma",r.company),cell("Ansprechpartner",r.contact_person)]:[]),cell("Gerät / Projekt",r.device_type),cell("Anzahl Geräte",r.device_count?String(r.device_count):""),cell("Wunschtermin",r.preferred_date?dde(r.preferred_date):""),cell("Anschrift",[r.street,r.location].filter(Boolean).join(", ")),cell("Beschreibung",r.message),cell("Telefon",r.phone),cell("E-Mail",r.email),cell("Eingegangen",fmt(r.created_at)),...(r.reject_reason?[cell("Ablehnungsgrund",r.reject_reason)]:[])].join("");
   $("#d-actions").innerHTML=`<a class="button button-primary" href="tel:${esc(String(r.phone||"").replace(/[^+\d]/g,""))}">Anrufen</a><a class="button button-ghost" href="mailto:${esc(r.email)}">E-Mail schreiben</a>`;
-  $("#d-status").innerHTML=statuses.map(s=>`<option ${s===r.status?"selected":""}>${s}</option>`).join("");$("#d-error").textContent="";$("#d-note").value="";$("#d-notes").innerHTML="";
+  $("#d-status").innerHTML=statuses.map(s=>`<option ${s===r.status?"selected":""}>${s}</option>`).join("");$("#d-error").textContent="";$("#d-note").value="";$("#d-notes").innerHTML="";$("#d-reason").value=r.reject_reason||"";syncReason();
   $("#detail").showModal();await loadNotes();});
+ function syncReason(){const on=$("#d-status").value==="Abgelehnt";$("#d-reason-wrap").hidden=!on;$("#d-reason-hint").hidden=!on;}
+ $("#d-status").addEventListener("change",syncReason);
  $("#d-note-save").addEventListener("click",async()=>{const note=$("#d-note").value.trim();if(!note||!cur)return;const {error}=await sb.from("inquiry_notes").insert({inquiry_id:cur.id,note,author_email:me.email});if(error){$("#d-error").textContent="Notiz konnte nicht gespeichert werden.";return;}$("#d-error").textContent="";$("#d-note").value="";await loadNotes();});
  $("#d-save").addEventListener("click",async()=>{if(!cur)return;const b=$("#d-save"),status=$("#d-status").value;b.disabled=true;$("#d-error").textContent="";
-  const {data,error}=await sb.functions.invoke("manage-inquiry",{body:{action:"status",inquiry_id:cur.id,status}});b.disabled=false;
+  const {data,error}=await sb.functions.invoke("manage-inquiry",{body:{action:"status",inquiry_id:cur.id,status,reason:status==="Abgelehnt"?$("#d-reason").value.trim():""}});b.disabled=false;
   if(error){$("#d-error").textContent=await fnError(error,"manage-inquiry");return;}
   $("#detail").close();await load();
   const ok=$("#app-info"),er=$("#app-error");ok.textContent="";
-  if(data&&data.mail==="sent")ok.textContent="✓ Status gespeichert. Bestätigungs-E-Mail an "+data.to+" gesendet.";
+  const mk=data&&data.mail_kind==="reject"?"Ablehnungs-E-Mail":"Bestätigungs-E-Mail";
+  if(data&&data.mail==="sent")ok.textContent="✓ Status gespeichert. "+mk+" an "+data.to+" gesendet.";
   else if(data&&data.mail==="failed")er.textContent="Status gespeichert, aber die E-Mail an "+data.to+" konnte nicht gesendet werden. "+(data.mail_error||"");
   else ok.textContent="✓ Status gespeichert.";});
  $("#d-delete").addEventListener("click",async()=>{if(!cur)return;

@@ -14,27 +14,34 @@
   $$(".inquiry-shortcut").forEach(btn=>btn.addEventListener("click",()=>{$$('[name="services"]',form).forEach(c=>c.checked=c.value===btn.dataset.service);$("#anfrage").scrollIntoView({behavior:"smooth"});}));
   $(".form-next",form).addEventListener("click",()=>{
     let valid=true;
-    ["customer_type","device_type"].forEach(n=>{const el=form.elements[n];if(valid&&!el.value.trim()){el.reportValidity();valid=false;}});
+    ["customer_type","device_type","device_other","device_count"].forEach(n=>{const el=form.elements[n];if(!valid||el.disabled)return;
+      if(n==="device_other")el.setCustomValidity(el.value.trim()?"":"Bitte angeben, um welches Gerät es sich handelt.");
+      if(!el.value.trim()||!el.checkValidity()){el.reportValidity();valid=false;}});
     if(!$$('[name="services"]:checked',form).length){showError("Bitte wähle mindestens eine Leistung aus.");valid=false;}
     if(valid){$(".form-error",form).hidden=true;showStep(2);}
   });
   // Firma und Ansprechpartner nur für Geschäftskunden
   const biz=$$(".biz",form),syncType=()=>{const on=form.elements.customer_type.value==="Geschäftskunde";biz.forEach(l=>{l.hidden=!on;const i=l.querySelector("input");i.disabled=!on;i.required=on;});};
   form.elements.customer_type.addEventListener("change",syncType);syncType();
+  // Bei „Sonstiges“ erscheint ein Pflichtfeld: Um welches Gerät handelt es sich?
+  const devOther=$(".device-other",form),syncDevice=()=>{const on=form.elements.device_type.value==="Sonstiges",inp=devOther.querySelector("input");devOther.hidden=!on;inp.disabled=!on;inp.required=on;if(!on){inp.value="";inp.setCustomValidity("");}};
+  form.elements.device_type.addEventListener("change",syncDevice);form.elements.device_other.addEventListener("input",e=>e.target.setCustomValidity(""));syncDevice();
+  form.elements.message.addEventListener("input",e=>e.target.setCustomValidity(""));
   $(".form-back",form).addEventListener("click",()=>showStep(1));
   form.addEventListener("submit",async e=>{
     e.preventDefault();$(".form-error",form).hidden=true;
     if(!form.reportValidity())return;
+    if(!String(form.elements.message.value).trim()){form.elements.message.setCustomValidity("Bitte beschreibe dein Anliegen.");form.elements.message.reportValidity();return;}
     const cfg=window.UNITOPIA_CONFIG||{};
     if(!window.supabase||!cfg.SUPABASE_URL||cfg.SUPABASE_URL.includes("DEIN-PROJEKT")){showError("Das Anfrage-System ist noch nicht verbunden. Bitte kontaktiere uns direkt per Telefon oder E-Mail.");return;}
     const data=new FormData(form);
-    const payload={customer_type:data.get("customer_type"),company:data.get("company")||"",contact_person:data.get("contact_person")||"",first_name:data.get("first_name"),last_name:data.get("last_name"),street:data.get("street"),zip:data.get("zip"),city:data.get("city"),phone:data.get("phone"),email:data.get("email"),device_type:data.get("device_type"),preferred_date:data.get("preferred_date")||null,device_count:data.get("device_count")?Number(data.get("device_count")):null,services:data.getAll("services"),message:data.get("message")};
+    const payload={customer_type:data.get("customer_type"),company:data.get("company")||"",contact_person:data.get("contact_person")||"",first_name:data.get("first_name"),last_name:data.get("last_name"),street:data.get("street"),zip:data.get("zip"),city:data.get("city"),phone:data.get("phone"),email:data.get("email"),device_type:data.get("device_type")==="Sonstiges"?"Sonstiges: "+String(data.get("device_other")||"").trim():data.get("device_type"),preferred_date:data.get("preferred_date")||null,device_count:data.get("device_count")?Number(data.get("device_count")):null,services:data.getAll("services"),message:String(data.get("message")).trim()};
     const submit=$('button[type="submit"]',form);submit.disabled=true;submit.textContent="Wird gesendet …";
     try{
       const client=window.supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_ANON_KEY);
       const {error}=await client.functions.invoke("submit-inquiry",{body:payload});
       if(error)throw error;
-      steps.forEach(s=>s.classList.remove("active"));$(".form-success",form).hidden=false;progress.style.width="100%";form.reset();syncType();
+      steps.forEach(s=>s.classList.remove("active"));$(".form-success",form).hidden=false;progress.style.width="100%";form.reset();syncType();syncDevice();
     }catch(err){console.error(err);showError("Deine Anfrage konnte gerade nicht gesendet werden. Bitte versuche es erneut oder nutze Telefon/E-Mail.");}
     finally{submit.disabled=false;submit.innerHTML='Anfrage senden <span>↗</span>';}
   });
