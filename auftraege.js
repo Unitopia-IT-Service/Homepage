@@ -28,7 +28,7 @@
 
  /* ---------- Aufträge ---------- */
  async function load(){
-  const {data,error}=await sb.from("inquiries").select("*").order("created_at",{ascending:false});
+  const {data,error}=await sb.from("inquiries").select("*").eq("email_verified",true).order("created_at",{ascending:false});
   if(error){$("#app-error").textContent="Aufträge konnten nicht geladen werden.";return;}$("#app-error").textContent="";requests=data||[];detectNew();render();
  }
  function detectNew(){const ids=new Set(requests.map(r=>r.id));

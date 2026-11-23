@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>E-Mail bestätigt – Unitopia IT-Service</title><link rel="icon" href="assets/logo-icon.webp" type="image/webp"><link rel="stylesheet" href="styles.css?v=8"></head>
+<body><header class="site-header"><a class="brand" href="index.html"><img class="brand-logo" src="assets/logo-wortmarke.webp" alt="Unitopia IT-Service" width="186" height="36"></a></header>
+<main><section class="section-wrap" style="text-align:center;min-height:50vh"><div class="success-icon" id="ic">✓</div><h2 id="h">Danke!</h2><p class="lead" id="t"></p><p><a class="button button-primary" href="index.html">Zur Startseite</a></p></section></main>
+<script>
+const s=new URLSearchParams(location.search).get("s"),h=document.getElementById("h"),t=document.getElementById("t"),ic=document.getElementById("ic");
+if(s==="ok"){h.textContent="E-Mail bestätigt";t.textContent="Deine Anfrage ist jetzt bei uns angekommen. Wir melden uns so schnell wie möglich persönlich bei dir."}
+else if(s==="expired"){ic.textContent="!";h.textContent="Link abgelaufen";t.textContent="Der Bestätigungslink ist nur 48 Stunden gültig. Bitte sende deine Anfrage noch einmal ab."}
+else{ic.textContent="!";h.textContent="Link ungültig";t.textContent="Dieser Bestätigungslink ist ungültig. Bitte sende deine Anfrage noch einmal ab oder kontaktiere uns direkt per Telefon oder E-Mail."}
+</script></body></html>

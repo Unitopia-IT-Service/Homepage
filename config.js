@@ -8,5 +8,7 @@ window.UNITOPIA_CONFIG = {
   // Nach dem Bauen der Android-App (APK) hier die Download-Adresse eintragen, z. B. "https://deine-domain.de/download/Unitopia.apk"
   // Adresse deiner echten Website OHNE Schrägstrich am Ende, z. B. "https://deine-domain.de". Wird für Einladungs- und Passwort-Links benutzt (nie localhost).
   SITE_URL: "",
+  // reCAPTCHA v3 – der Site-Key darf im Frontend stehen. Der Secret-Key kommt NUR in die Supabase-Secrets (RECAPTCHA_SECRET)!
+  RECAPTCHA_SITE_KEY: "6Le3ii4uAAAAACOws_o4LllnEcFe5YQZjgj--T71",
   ANDROID_APP_URL: ""
 };

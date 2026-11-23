@@ -28,6 +28,11 @@
   form.elements.device_type.addEventListener("change",syncDevice);form.elements.device_other.addEventListener("input",e=>e.target.setCustomValidity(""));syncDevice();
   form.elements.message.addEventListener("input",e=>e.target.setCustomValidity(""));
   $(".form-back",form).addEventListener("click",()=>showStep(1));
+  // reCAPTCHA v3 (unsichtbar) laden
+  const rcKey=(window.UNITOPIA_CONFIG||{}).RECAPTCHA_SITE_KEY;
+  if(rcKey){const sc=document.createElement("script");sc.src="https://www.google.com/recaptcha/api.js?render="+encodeURIComponent(rcKey);sc.async=true;document.head.append(sc);}
+  const rcToken=()=>new Promise((res,rej)=>{if(!rcKey)return res("");if(!window.grecaptcha)return rej(new Error("grecaptcha"));window.grecaptcha.ready(()=>window.grecaptcha.execute(rcKey,{action:"inquiry"}).then(res,rej));});
+  const fnMsg=async err=>{try{const r=err&&err.context;if(r&&typeof r.json==="function"){const j=await r.json();if(j&&j.error)return j.error;}}catch(_){}return "Deine Anfrage konnte gerade nicht gesendet werden. Bitte versuche es erneut oder nutze Telefon/E-Mail.";};
   form.addEventListener("submit",async e=>{
     e.preventDefault();$(".form-error",form).hidden=true;
     if(!form.reportValidity())return;
@@ -39,8 +44,9 @@
     const submit=$('button[type="submit"]',form);submit.disabled=true;submit.textContent="Wird gesendet …";
     try{
       const client=window.supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_ANON_KEY);
+      try{payload.recaptcha=await rcToken();}catch(_){showError("Die Spam-Prüfung konnte nicht geladen werden. Bitte Seite neu laden (Werbeblocker prüfen) oder uns per Telefon/E-Mail kontaktieren.");return;}
       const {error}=await client.functions.invoke("submit-inquiry",{body:payload});
-      if(error)throw error;
+      if(error){showError(await fnMsg(error));return;}
       steps.forEach(s=>s.classList.remove("active"));$(".form-success",form).hidden=false;progress.style.width="100%";form.reset();syncType();syncDevice();
     }catch(err){console.error(err);showError("Deine Anfrage konnte gerade nicht gesendet werden. Bitte versuche es erneut oder nutze Telefon/E-Mail.");}
     finally{submit.disabled=false;submit.innerHTML='Anfrage senden <span>↗</span>';}
