@@ -90,12 +90,17 @@ async function print(r){const D=defOf(r),w=window.open("","_blank");if(!w){alert
  <div class="f">Unitopia IT-Service · Inh. André Kasper · Tel. 0155 67945706 · Unitopia.itservice@gmx.de</div><script>onload=()=>setTimeout(print,400)<\/script>`);w.document.close()}
 /* ---- Sicher exportieren (USB-Stick), danach Löschen ---- */
 async function secureExport(id){const r=rows.find(x=>x.id===id),D=defOf(r);let extra={};
- if(r.data.enc){const pw=prompt("Verschlüsselungs-Passwort zum Entschlüsseln eingeben:");if(!pw)return;try{extra=await dec(r.data.enc,pw)}catch(_){alert("Falsches Passwort.");return}}
+ const name=`${D.title}-${r.no}.html`.replace(/[^\wäöüÄÖÜß.-]/g,"_");let ok=false,h=null;
+ /* 1) Speicherort SOFORT wählen: Der Browser erlaubt den Datei-Dialog nur direkt nach dem Klick (nicht nach Passwort-Eingabe, Entschlüsselung oder Laden der Fotos). */
+ if(window.showSaveFilePicker){try{h=await window.showSaveFilePicker({suggestedName:name,types:[{description:"HTML-Datei",accept:{"text/html":[".html"]}}]})}catch(e){if(e.name==="AbortError")return;alert("Speichern fehlgeschlagen: "+e.message+"\nDas Protokoll bleibt in der Datenbank.");return}}
+ const discard=async()=>{try{if(h&&h.remove)await h.remove()}catch(_){}};/* leere Datei wieder entfernen, falls abgebrochen */
+ /* 2) Passwort abfragen und entschlüsseln */
+ if(r.data.enc){const pw=prompt("Verschlüsselungs-Passwort zum Entschlüsseln eingeben:");if(!pw){await discard();return}try{extra=await dec(r.data.enc,pw)}catch(_){alert("Falsches Passwort.");await discard();return}}
+ /* 3) Inhalt aufbauen und in die gewählte Datei schreiben */
  extra.__photoUrls=await asDataUrls(await signed(r.data.photos));const d={...r.data,...extra},fields=D.fields.map(f=>f[0]),html=`<!doctype html><meta charset="utf-8"><title>${esc(r.no)}</title>${CSS}<p style="color:#b00"><b>VERTRAULICH – nach Auftragsende sicher löschen.</b></p><h2>${esc(D.title)} ${esc(r.no)}</h2><p>Exportiert am ${new Date().toLocaleString("de-DE")}</p>${body(r,D,extra)}`;
- const name=`${D.title}-${r.no}.html`.replace(/[^\wäöüÄÖÜß.-]/g,"_");let ok=false;
- try{if(window.showSaveFilePicker){const h=await window.showSaveFilePicker({suggestedName:name,types:[{description:"HTML-Datei",accept:{"text/html":[".html"]}}]}),w=await h.createWritable();await w.write(html);await w.close();ok=true}
+ try{if(h){const w=await h.createWritable();await w.write(html);await w.close();ok=true}
   else{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([html],{type:"text/html"}));a.download=name;a.click();ok=confirm("Wurde die Datei wirklich auf dem verschlüsselten USB-Stick gespeichert?")}}
- catch(e){if(e.name==="AbortError")return;alert("Speichern fehlgeschlagen: "+e.message+"\nDas Protokoll bleibt in der Datenbank.");return}
+ catch(e){await discard();if(e.name==="AbortError")return;alert("Speichern fehlgeschlagen: "+e.message+"\nDas Protokoll bleibt in der Datenbank.");return}
  if(!ok||!confirm("Datei gespeichert. Protokoll jetzt endgültig aus der Datenbank löschen?"))return;
  const {error}=await sb.from("device_intakes").delete().eq("id",id);if(error){alert("Löschen nicht möglich: "+error.message);return}if((r.data.photos||[]).length)await sb.storage.from("intake-photos").remove(r.data.photos);
  rows=rows.filter(x=>x.id!==id);draw();alert("Exportiert und gelöscht. Bitte Export und Löschung mit Datum im Datenlöschprotokoll vermerken.")}
