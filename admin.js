@@ -57,7 +57,7 @@
   if(error){$("#status-error").textContent=await fnError(error,"manage-inquiry");return;}
   $("#status-dialog").close();statusTarget=null;await loadRequests();flashMail(data);});
  function flashMail(d){const ok=$("#dashboard-info"),er=$("#dashboard-error");ok.textContent="";if(!d)return;
-  const a=d.acc,accTxt=a&&a.status==="created"?" Buchhaltung: Kunde "+a.customer_no+(a.customer_new?" neu angelegt":" (war schon vorhanden)")+", Angebot als Entwurf gespeichert.":"",accErr=a&&a.status==="failed"?" Buchhaltung konnte nicht angelegt werden: "+a.error:"";
+  const a=d.acc,accTxt=a&&a.status==="created"?" Buchhaltung: Kunde "+a.customer_no+(a.customer_new?" neu angelegt":" (war schon vorhanden)")+", Angebot als Entwurf gespeichert.":""+(a&&a.customer_changes&&a.customer_changes.length?" ⚠ Neue Angaben zu "+a.customer_changes.join(", ")+" – bitte in Buchhaltung › Kunden prüfen und bestätigen (alte Daten bleiben bis dahin unverändert).":""),accErr=a&&a.status==="failed"?" Buchhaltung konnte nicht angelegt werden: "+a.error:"";
   const mk=d.mail_kind==="reject"?"Ablehnungs-E-Mail":"Bestätigungs-E-Mail";
   if(d.mail==="sent")ok.textContent="✓ Status gespeichert. Die "+mk+" an "+d.to+" wurde gesendet."+accTxt;
   else if(d.mail==="failed")er.textContent="Status gespeichert, aber die E-Mail an "+d.to+" konnte nicht gesendet werden. "+(d.mail_error||"")+accTxt;
