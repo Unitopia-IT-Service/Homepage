@@ -54,7 +54,7 @@
   const ok=$("#app-info"),er=$("#app-error");ok.textContent="";
   const mk=data&&data.mail_kind==="reject"?"Ablehnungs-E-Mail":"Bestätigungs-E-Mail";
   if(data&&data.mail==="sent")ok.textContent="✓ Status gespeichert. "+mk+" an "+data.to+" gesendet.";
-  else if(data&&data.mail==="failed")er.textContent="Status gespeichert, aber die E-Mail an "+data.to+" konnte nicht gesendet werden. "+(data.mail_error||"");
+  else if(data&&data.mail==="failed")er.textContent="Status gespeichert, aber die E-Mail an "+data.to+" konnte nicht gesendet werden. "+(data.mail_error||"")+" → Zum erneuten Senden denselben Status einfach noch einmal speichern.";
   else ok.textContent="✓ Status gespeichert.";});
  $("#d-delete").addEventListener("click",async()=>{if(!cur)return;
   if(!(await askConfirm("Auftrag löschen?","Auftrag von „"+cur.full_name+"“ endgültig löschen? Der Auftrag und alle internen Notizen werden unwiderruflich entfernt.")))return;

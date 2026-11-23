@@ -60,7 +60,7 @@
   const a=d.acc,accTxt=a&&a.status==="created"?" Buchhaltung: Kunde "+a.customer_no+(a.customer_new?" neu angelegt":" (war schon vorhanden)")+", Angebot als Entwurf gespeichert.":""+(a&&a.customer_changes&&a.customer_changes.length?" ⚠ Neue Angaben zu "+a.customer_changes.join(", ")+" – bitte in Buchhaltung › Kunden prüfen und bestätigen (alte Daten bleiben bis dahin unverändert).":""),accErr=a&&a.status==="failed"?" Buchhaltung konnte nicht angelegt werden: "+a.error:"";
   const mk=d.mail_kind==="reject"?"Ablehnungs-E-Mail":"Bestätigungs-E-Mail";
   if(d.mail==="sent")ok.textContent="✓ Status gespeichert. Die "+mk+" an "+d.to+" wurde gesendet."+accTxt;
-  else if(d.mail==="failed")er.textContent="Status gespeichert, aber die E-Mail an "+d.to+" konnte nicht gesendet werden. "+(d.mail_error||"")+accTxt;
+  else if(d.mail==="failed")er.textContent="Status gespeichert, aber die E-Mail an "+d.to+" konnte nicht gesendet werden. "+(d.mail_error||"")+" → Zum erneuten Senden denselben Status einfach noch einmal speichern."+accTxt;
   else ok.textContent="✓ Status gespeichert."+accTxt;
   if(accErr)er.textContent=(er.textContent?er.textContent+" ":"")+accErr.trim();}
  $("#status-cancel").addEventListener("click",()=>$("#status-dialog").close());$("#close-status").addEventListener("click",()=>$("#status-dialog").close());
