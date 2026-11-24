@@ -34,6 +34,16 @@ async function save(kind,data,id,extra={}){
  const {data:row,error}=await q.select().single();if(error){alert("Fehler: "+error.message);return null}
  const i=R.findIndex(x=>x.id===row.id);i<0?R.push(row):R[i]=row;if(kind==="settings")S=row.data;return row;}
 async function del(id){const {error}=await sb.from("acc_records").delete().eq("id",id);if(error){alert(error.message);return false}R=R.filter(r=>r.id!==id);return true}
+async function delExpense(id){
+ const r=byId(id);if(!r||r.kind!=="expense")return;
+ if(r.locked){alert("Dieser Beleg ist festgeschrieben und kann nicht gelöscht werden.");return}
+ const supplier=r.data?.supplier||"diesen Beleg";
+ if(!confirm(`Eingangsrechnung/Beleg von „${supplier}“ wirklich löschen?${r.data?.file?" Die zugehörige PDF-/Bilddatei wird ebenfalls gelöscht.":""} Diese Aktion kann nicht rückgängig gemacht werden.`))return;
+ const file=r.data?.file;
+ if(!await del(id))return;
+ if(file){const {error}=await sb.storage.from("acc-docs").remove([file]);if(error)alert("Der Beleg wurde aus der Liste gelöscht, aber die gespeicherte Datei konnte nicht entfernt werden: "+error.message)}
+ render();
+}
 function nextNo(kind,prefix,yearly=true){const p=yearly?`${prefix}-${new Date().getFullYear()}-`:`${prefix}-`;
  const m=Math.max(0,...L(kind).map(r=>r.data.no).filter(n=>n&&n.startsWith(p)).map(n=>+n.slice(p.length)||0));return p+String(m+1).padStart(4,"0")}
 
@@ -314,7 +324,7 @@ function expForm(id){const r=id?byId(id):null,e=r?.data||{date:today(),paid:fals
   const dup=L("expense").find(x=>x.id!==id&&x.data.supplier===o.supplier&&x.data.no&&x.data.no===o.no);if(dup&&!confirm("Möglicher doppelter Beleg (gleicher Lieferant und Nummer). Trotzdem speichern?"))return false;
   if(f&&f.size){const p=`${new Date().getFullYear()}/${Date.now()}-${f.name.replace(/[^\w.-]/g,"_")}`;const {error}=await sb.storage.from("acc-docs").upload(p,f);if(error){alert("Upload: "+error.message);return false}o.file=p}
   return !!await save("expense",o,id)})}
-function vExp(v){const q=flt.q.toLowerCase();v.innerHTML=`<div class="acc-h"><h2>Eingangsrechnungen & Belege</h2><div class="acc-bar"><input id="q" placeholder="Suchen …" value="${esc(flt.q)}"><button class="button button-primary" data-act="newexp">+ Beleg erfassen</button></div></div>${table(["Datum","Lieferant","Nr.","Bestellnr.","Kategorie","Netto","USt","Brutto","Status","Beleg"],L("expense").slice().reverse().filter(r=>!q||(JSON.stringify(r.data)+" "+(r.data.order&&orderMap()[r.data.order]?orderLabel(orderMap()[r.data.order]):"")).toLowerCase().includes(q)).map(r=>{const e=r.data;return `<tr class="r" data-exp="${r.id}"><td>${dde(e.date)}</td><td>${esc(e.supplier)}</td><td>${esc(e.no)}</td><td>${e.order?esc(e.order):"–"}</td><td>${esc(e.cat)}</td><td class="n">${eur(e.net)}</td><td class="n">${eur(e.vat)}</td><td class="n">${eur(e.gross)}</td><td>${e.paid?pill("Bezahlt","ok"):pill("Offen","warn")}</td><td>${e.file?`<a href="#" data-file="${esc(e.file)}">öffnen</a>`:"–"}</td></tr>`}))}`;
+function vExp(v){const q=flt.q.toLowerCase();v.innerHTML=`<div class="acc-h"><h2>Eingangsrechnungen & Belege</h2><div class="acc-bar"><input id="q" placeholder="Suchen …" value="${esc(flt.q)}"><button class="button button-primary" data-act="newexp">+ Beleg erfassen</button></div></div>${table(["Datum","Lieferant","Nr.","Bestellnr.","Kategorie","Netto","USt","Brutto","Status","Beleg","Aktion"],L("expense").slice().reverse().filter(r=>!q||(JSON.stringify(r.data)+" "+(r.data.order&&orderMap()[r.data.order]?orderLabel(orderMap()[r.data.order]):"")).toLowerCase().includes(q)).map(r=>{const e=r.data;return `<tr class="r" data-exp="${r.id}"><td>${dde(e.date)}</td><td>${esc(e.supplier)}</td><td>${esc(e.no)}</td><td>${e.order?esc(e.order):"–"}</td><td>${esc(e.cat)}</td><td class="n">${eur(e.net)}</td><td class="n">${eur(e.vat)}</td><td class="n">${eur(e.gross)}</td><td>${e.paid?pill("Bezahlt","ok"):pill("Offen","warn")}</td><td>${e.file?`<a href="#" data-file="${esc(e.file)}">öffnen</a>`:"–"}</td><td>${r.locked?pill("Festgeschrieben","warn"): `<button type="button" class="button button-ghost" data-delexp="${r.id}" style="padding:5px 9px">Löschen</button>`}</td></tr>`}))}`;
  $("#q").oninput=e=>{flt.q=e.target.value;vExp(v);$("#q").focus()}}
 
 /* ---------- Buchhaltung ---------- */
@@ -358,8 +368,9 @@ async function seed(){if(L("catalog").length&&!confirm("Katalog hat bereits Eint
 async function showLog(){const {data}=await sb.from("acc_log").select("*").order("at",{ascending:false}).limit(60);modal(`<h3>Änderungsprotokoll (letzte 60)</h3>${table(["Zeit","Aktion","Art","Datensatz"],(data||[]).map(x=>`<tr><td>${new Date(x.at).toLocaleString("de-DE")}</td><td>${x.action}</td><td>${x.kind}</td><td>${esc((x.new_data||x.old_data||{}).no||(x.new_data||x.old_data||{}).supplier||x.record_id.slice(0,8))}</td></tr>`))}`)}
 
 /* ---------- Events ---------- */
-document.addEventListener("click",async e=>{const t=e.target.closest("[data-act],[data-view],[data-new],[data-open],[data-cust],[data-exp],[data-dun],[data-st],[data-file],[data-delcat],[data-cat],[data-stb],[data-delrec],[data-href]");if(!t)return;const D=t.dataset;
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-act],[data-view],[data-new],[data-open],[data-cust],[data-exp],[data-dun],[data-st],[data-file],[data-delcat],[data-cat],[data-stb],[data-delrec],[data-delexp],[data-href]");if(!t)return;const D=t.dataset;
  if(D.href)location.href=D.href;
+ else if(D.delexp){e.preventDefault();e.stopPropagation();await delExpense(D.delexp)}
  else if(D.delrec){e.preventDefault();e.stopPropagation();delRecord(D.delrec)}
  else if(D.view){view=D.view;flt.q="";render()}
  else if(D.new)newDoc(D.new);
@@ -380,6 +391,14 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-act]
 (async()=>{const m=$("#acc-msg");
  try{const {data:{session}}=await sb.auth.getSession();if(!session){m.innerHTML='Bitte zuerst im <a href="admin.html">Mitarbeiterbereich anmelden</a>.';return}
   const {data:p}=await sb.from("profiles").select("role").eq("id",session.user.id).single();if(p?.role!=="admin"){m.textContent="Dieser Bereich ist nur für Administratoren.";return}
-  await load();m.hidden=true;$("#acc-app").hidden=false;render()}
+  await load();m.hidden=true;$("#acc-app").hidden=false;render();
+  // Live-Aktualisierung: neue/geänderte Buchhaltungsdatensätze ohne manuelles Neuladen anzeigen.
+  const refreshRecords=async()=>{try{await load();if(!document.hidden)render()}catch(err){console.warn("Buchhaltung konnte nicht aktualisiert werden:",err)}};
+  sb.channel("acc-records-live").on("postgres_changes",{event:"*",schema:"public",table:"acc_records"},refreshRecords).subscribe();
+  // Fallback, falls Realtime in Supabase noch nicht aktiviert ist.
+  setInterval(()=>{if(!document.hidden)refreshRecords()},30000);
+  document.addEventListener("visibilitychange",()=>{if(!document.hidden)refreshRecords()});
+  window.addEventListener("pageshow",refreshRecords);
+ }
  catch(err){m.innerHTML="Datenbank nicht bereit: "+esc(err.message||err)+"<br>Bitte <code>supabase/buchhaltung.sql</code> im Supabase SQL-Editor ausführen."}})();
 })();
